@@ -1,0 +1,31 @@
+services:
+
+  rservice_frontend:
+    container_name: frontend
+    build: .
+    stdin_open: true
+    tty: true
+    ports:
+      - "${EXPO_PORT1}:${EXPO_PORT1}"
+      - "${EXPO_PORT2}:${EXPO_PORT2}"
+      - "${EXPO_PORT3}:${EXPO_PORT3}"
+      - "${EXPO_PORT4}:${EXPO_PORT4}"
+    environment:
+      EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
+      REACT_NATIVE_PACKAGER_HOSTNAME: ${IP_ADDRESS}
+
+  db:
+    image: postgres:18
+    container_name: db
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pg_data:/var/lib/postgresql
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+volumes:
+  pg_data:
