@@ -6,23 +6,23 @@ services:
     stdin_open: true
     tty: true
     ports:
-      - "8081:8081"
-      - "19000:19000"
-      - "19001:19001"
-      - "19002:19002"
+      - "${EXPO_PORT1}:${EXPO_PORT1}"
+      - "${EXPO_PORT2}:${EXPO_PORT2}"
+      - "${EXPO_PORT3}:${EXPO_PORT3}"
+      - "${EXPO_PORT4}:${EXPO_PORT4}"
     environment:
       EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
-      REACT_NATIVE_PACKAGER_HOSTNAME: 192.168.1.19
+      REACT_NATIVE_PACKAGER_HOSTNAME: ${IP_ADDRESS}
 
   db:
     image: postgres:18
     container_name: db
     ports:
-      - "5432:5432"
+      - "${DB_PORT}:${DB_PORT}"
     environment:
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_DB: db
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - pg_data:/var/lib/postgresql
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
