@@ -1,0 +1,19 @@
+FROM node:current-slim
+
+WORKDIR frontend/
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+ENV EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+ENV REACT_NATIVE_PACKAGER_HOSTNAME=192.168.1.19
+
+EXPOSE 8081
+EXPOSE 19000
+EXPOSE 19001
+EXPOSE 19002
+
+CMD ["npm", "start"]
