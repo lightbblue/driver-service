@@ -24,7 +24,7 @@ interface MechanicItem {
   tags: string[];
 }
 
-// TODO: Reemplazar por datos de Supabase cuando esté el backend listo
+
 const FEATURED_MECHANICS: MechanicItem[] = [
   {
     id: '1',
