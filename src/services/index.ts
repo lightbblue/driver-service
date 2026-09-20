@@ -7,4 +7,5 @@ export {
   obtenerSolicitud,
   obtenerSolicitudActiva,
 } from './solicitudes';
+export { obtenerUbicacionActual } from './ubicacion';
 export { obtenerUsuario, obtenerUsuarioActual } from './usuarios';
