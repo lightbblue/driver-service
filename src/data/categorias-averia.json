@@ -1,0 +1,10 @@
+[
+  { "id": "c1", "codigo": "FALLA_MECANICA", "nombre": "Falla mecánica", "descripcion": "La moto anda mal o hace ruidos extraños", "icono": "engine", "requiere_foto": false, "activo": true, "orden": 1 },
+  { "id": "c2", "codigo": "PINCHADURA", "nombre": "Pinchadura", "descripcion": "Neumático desinflado o dañado", "icono": "tire", "requiere_foto": false, "activo": true, "orden": 2 },
+  { "id": "c3", "codigo": "BATERIA", "nombre": "Batería", "descripcion": "Batería descargada", "icono": "battery", "requiere_foto": false, "activo": true, "orden": 3 },
+  { "id": "c4", "codigo": "SIN_COMBUSTIBLE", "nombre": "Sin combustible", "descripcion": "Te quedaste sin nafta", "icono": "fuel", "requiere_foto": false, "activo": true, "orden": 4 },
+  { "id": "c5", "codigo": "ARRANQUE", "nombre": "Problemas de arranque", "descripcion": "La moto no enciende", "icono": "key", "requiere_foto": false, "activo": true, "orden": 5 },
+  { "id": "c6", "codigo": "CADENA", "nombre": "Problemas de cadena", "descripcion": "Cadena floja, salida o cortada", "icono": "chain", "requiere_foto": false, "activo": true, "orden": 6 },
+  { "id": "c7", "codigo": "ACCIDENTE", "nombre": "Accidente", "descripcion": "Necesitás asistencia urgente", "icono": "crash", "requiere_foto": true, "activo": true, "orden": 7 },
+  { "id": "c8", "codigo": "OTRO", "nombre": "Otro problema", "descripcion": "Contanos qué te pasa", "icono": "alert", "requiere_foto": false, "activo": true, "orden": 8 }
+]

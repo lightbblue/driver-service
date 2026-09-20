@@ -1,0 +1,79 @@
+[
+  {
+    "id": "s1",
+    "codigo": "RS-2026-0013",
+    "cliente_id": "11111111-1111-4111-8111-111111111111",
+    "mecanico_id": "m3",
+    "categoria_codigo": "FALLA_MECANICA",
+    "categoria_nombre": "Falla mecánica",
+    "descripcion": "La moto no enciende, escucho un ruido raro.",
+    "ubicacion": {
+      "latitud": -34.4585,
+      "longitud": -58.9142,
+      "direccion": "Colectora Panamericana Km 52, Pilar, Bs. As.",
+      "localidad": "Pilar",
+      "referencia": "Frente a la estación de servicio"
+    },
+    "estado": "en_camino",
+    "eta_minutos": 12,
+    "creado_en": "2026-09-18T14:32:00Z",
+    "finalizado_en": null,
+    "historial": [
+      { "estado_nuevo": "solicitado", "ocurrido_en": "2026-09-18T14:32:00Z", "observacion": null },
+      { "estado_nuevo": "aceptado", "ocurrido_en": "2026-09-18T14:34:00Z", "observacion": null },
+      { "estado_nuevo": "en_camino", "ocurrido_en": "2026-09-18T14:36:00Z", "observacion": null }
+    ]
+  },
+  {
+    "id": "s2",
+    "codigo": "RS-2026-0009",
+    "cliente_id": "11111111-1111-4111-8111-111111111111",
+    "mecanico_id": "m1",
+    "categoria_codigo": "PINCHADURA",
+    "categoria_nombre": "Pinchadura",
+    "descripcion": null,
+    "ubicacion": {
+      "latitud": -34.4612,
+      "longitud": -58.9201,
+      "direccion": "Av. Caamaño 980, Pilar, Bs. As.",
+      "localidad": "Pilar",
+      "referencia": null
+    },
+    "estado": "finalizado",
+    "eta_minutos": null,
+    "creado_en": "2026-08-30T10:05:00Z",
+    "finalizado_en": "2026-08-30T11:20:00Z",
+    "historial": [
+      { "estado_nuevo": "solicitado", "ocurrido_en": "2026-08-30T10:05:00Z", "observacion": null },
+      { "estado_nuevo": "aceptado", "ocurrido_en": "2026-08-30T10:09:00Z", "observacion": null },
+      { "estado_nuevo": "en_camino", "ocurrido_en": "2026-08-30T10:14:00Z", "observacion": null },
+      { "estado_nuevo": "llegue", "ocurrido_en": "2026-08-30T10:38:00Z", "observacion": null },
+      { "estado_nuevo": "trabajando", "ocurrido_en": "2026-08-30T10:42:00Z", "observacion": null },
+      { "estado_nuevo": "finalizado", "ocurrido_en": "2026-08-30T11:20:00Z", "observacion": "Cubierta reparada en el lugar" }
+    ]
+  },
+  {
+    "id": "s3",
+    "codigo": "RS-2026-0004",
+    "cliente_id": "11111111-1111-4111-8111-111111111111",
+    "mecanico_id": null,
+    "categoria_codigo": "SIN_COMBUSTIBLE",
+    "categoria_nombre": "Sin combustible",
+    "descripcion": "Me quedé sin nafta a 200 metros de la rotonda.",
+    "ubicacion": {
+      "latitud": -34.4423,
+      "longitud": -58.8877,
+      "direccion": "Ruta 8 Km 54, Pilar, Bs. As.",
+      "localidad": "Pilar",
+      "referencia": null
+    },
+    "estado": "cancelada",
+    "eta_minutos": null,
+    "creado_en": "2026-08-11T19:47:00Z",
+    "finalizado_en": null,
+    "historial": [
+      { "estado_nuevo": "solicitado", "ocurrido_en": "2026-08-11T19:47:00Z", "observacion": null },
+      { "estado_nuevo": "cancelada", "ocurrido_en": "2026-08-11T19:55:00Z", "observacion": "Cancelada por el cliente" }
+    ]
+  }
+]
