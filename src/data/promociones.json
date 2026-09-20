@@ -1,0 +1,23 @@
+[
+  {
+    "id": "p1",
+    "titulo": "Más rutas,",
+    "titulo_destacado": "menos problemas",
+    "bajada": "Asistencia, comunidad y soporte siempre que lo necesites.",
+    "imagen_url": "https://images.unsplash.com/photo-1558981285-6f0c94958bb6?w=900&q=80"
+  },
+  {
+    "id": "p2",
+    "titulo": "Tu moto,",
+    "titulo_destacado": "siempre lista",
+    "bajada": "Mecánicos verificados a un toque de distancia.",
+    "imagen_url": "https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=900&q=80"
+  },
+  {
+    "id": "p3",
+    "titulo": "Viajá tranquilo",
+    "titulo_destacado": null,
+    "bajada": "Cobertura en toda la región, las 24 horas.",
+    "imagen_url": null
+  }
+]
