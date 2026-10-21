@@ -19,8 +19,8 @@ export function useRecurso<T>(
   const [datos, setDatos] = useState<T>(valorInicial);
   const [cargando, setCargando] = useState(true);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const ejecutar = useCallback(cargar, dependencias);
+  // eslint-disable-next-line react-hooks/use-memo
+const ejecutar = useCallback(cargar, dependencias);
 
   const recargar = useCallback(() => {
     let vigente = true;
@@ -30,8 +30,9 @@ export function useRecurso<T>(
       .then((resultado) => {
         if (vigente) setDatos(resultado);
       })
-      .catch(() => {
-        if (vigente) setDatos(valorInicial);
+      .catch((error) => {
+  console.error('Error al cargar recurso:', error);
+  if (vigente) setDatos(valorInicial);
       })
       .finally(() => {
         if (vigente) setCargando(false);
@@ -43,7 +44,8 @@ export function useRecurso<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ejecutar]);
 
-  useEffect(() => recargar(), [recargar]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+useEffect(() => recargar(), [recargar]);
 
   return { datos, cargando, recargar };
 }

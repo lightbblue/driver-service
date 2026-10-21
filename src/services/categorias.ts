@@ -1,12 +1,35 @@
-import datos from '@/data/categorias-averia.json';
+
+import { supabase } from '@/lib/supabase';
 import type { CategoriaAveria } from '@/types';
 
-import { leer } from './cliente-local';
-
-const CATEGORIAS = datos as CategoriaAveria[];
-
-/** Catálogo de tipos de avería (RF-VIEW-006, paso 1). */
 export async function listarCategoriasAveria(): Promise<CategoriaAveria[]> {
-  const activas = CATEGORIAS.filter((c) => c.activo).sort((a, b) => a.orden - b.orden);
-  return leer(activas);
+  console.log('[CATEGORIAS] Iniciando consulta a Supabase');
+
+  const { data, error } = await supabase
+    .from('categorias_averia')
+    .select('id, nombre, descripcion, icono')
+    .order('nombre');
+
+  console.log('[CATEGORIAS] Resultado:', {
+    cantidad: data?.length ?? 0,
+    error: error?.message ?? null,
+    datos: data,
+  });
+
+  if (error) {
+    throw new Error(`No se pudieron cargar las categorías: ${error.message}`);
+  }
+
+  return (data ?? []).map((categoria, index) => ({
+    id: categoria.id,
+    codigo: categoria.nombre,
+    nombre: categoria.nombre,
+    descripcion: categoria.descripcion,
+    icono: categoria.icono,
+    requiere_foto: categoria.nombre === 'Accidente',
+    activo: true,
+    orden: index + 1,
+  }));
 }
+
+

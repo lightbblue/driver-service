@@ -2,6 +2,7 @@ export { listarCategoriasAveria } from './categorias';
 export { listarConsejos, listarPromociones } from './contenido';
 export { listarMecanicos, listarMecanicosDestacados, obtenerMecanico } from './mecanicos';
 export {
+  crearSolicitud,
   esEstadoActivo,
   listarSolicitudes,
   obtenerSolicitud,
