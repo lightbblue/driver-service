@@ -91,39 +91,36 @@ EXPO_PUBLIC_SUPABASE_KEY=<publishable / anon key>
 
 ### Puesta en marcha de la base
 
-El esquema sigue el modelo de datos (`03-Rider-Service-Modelo-de-Datos.md`), aplicado por etapas:
+Las migraciones se ajustan a las tablas que ya existen en Supabase (`solicitudes`, `historial_solicitudes`, `mecanicos`, `categorias_averia`, `perfiles`): solo agregan columnas, funciones y políticas, sin renombrar ni borrar nada.
 
-| Migración | Contenido |
-|---|---|
-| `…_etapa_2_1_perfiles_mecanicos.sql` | `perfiles` (con alta automática al registrarse), `mecanicos`, `especialidades` y sus políticas RLS |
-| `…_etapa_2_2_servicios.sql` | `categorias_averia`, `servicios`, `servicio_estados`, máquina de estados, funciones y RLS |
-| `…_migrar_solicitudes_a_servicios.sql` | Copia los datos de las tablas anteriores (`solicitudes`, `historial_solicitudes`) al modelo |
+| Migración | Contenido | Requisitos |
+|---|---|---|
+| `…_solicitudes_estructura.sql` | Código `RS-AAAA-NNNN`, tiempo estimado, motivo de cancelación, estado anterior y actor en el historial, vínculo taller ↔ usuario | RF-ASSIST-005, RF-DATA-004 |
+| `…_solicitudes_estados.sql` | Máquina de estados, aceptación atómica, una solicitud activa por cliente, bitácora automática | RF-STATE-001..005, RF-MATCH-003/004, RN-002..005, RN-009, RN-010 |
+| `…_solicitudes_rls.sql` | Políticas RLS, privilegios y Realtime | RF-SEC-001, RN-001, RN-008 |
 
 1. Ejecutar en el **SQL Editor** cada archivo de `supabase/migrations/`, en orden. Son idempotentes.
 2. Comprobar el resultado con `npm run verificar:supabase` (solo lecturas).
 3. `supabase/verificacion.sql` lista columnas, restricciones, políticas RLS y triggers, para revisar el esquema desde el SQL Editor.
 
-Las tablas `solicitudes` e `historial_solicitudes` quedan como respaldo; una vez comprobada la migración se pueden eliminar.
-
 ### Seguimiento del servicio
 
-Los estados de un servicio son `solicitado → aceptado → en_camino → llegue → trabajando → finalizado`, más `cancelada` hasta antes de iniciar el trabajo (RN-004, RN-009). Todo cambio pasa por `cambiar_estado_servicio()`; la aceptación, por `aceptar_servicio()`, que es atómica (RN-002). Un trigger valida la transición, completa la marca temporal de cada etapa y registra el cambio en `servicio_estados` con el actor y la observación. La app no puede modificar `servicios` directamente: los privilegios y la RLS lo impiden.
+Los estados son `pendiente → aceptado → en_camino → llegue → trabajando → finalizado`, más `cancelada` hasta antes de iniciar el trabajo (RN-009). `pendiente` es el estado inicial que la base ya usaba ("Solicitado" en el SRS). Todo cambio pasa por `cambiar_estado_solicitud()`; un trigger valida la transición (RN-004) y registra en `historial_solicitudes` el estado anterior, el actor, la fecha y la `nota`. La app no puede modificar `solicitudes` directamente: los privilegios y la RLS lo impiden.
 
-Un cliente no puede tener más de una solicitud activa (RN-010), ni un mecánico más de un servicio en curso.
-
-Una cuenta es de mecánico cuando tiene un taller en `mecanicos`. Para crear uno de prueba:
+Una cuenta es de mecánico cuando está vinculada a un taller de `mecanicos`:
 
 ```sql
-insert into public.mecanicos (perfil_id, nombre_taller, direccion_taller, localidad, latitud, longitud, disponible)
-values ((select id from auth.users where email = 'mecanico@ejemplo.com'),
-        'Taller de prueba', 'Av. Caamaño 980', 'Pilar', -34.4587, -58.9142, true);
+update public.mecanicos
+set usuario_id = (select id from auth.users where email = 'mecanico@ejemplo.com'),
+    disponible = true
+where id = '<id del taller>';
 ```
 
-El perfil pasa a tener rol `mecanico` automáticamente. Solo los mecánicos con `disponible = true` ven las solicitudes abiertas y pueden aceptarlas.
+Solo los mecánicos con `disponible = true` ven las solicitudes pendientes y pueden aceptarlas (RN-003).
 
 ### Ubicación
 
-El paso 2 de la solicitud pide permiso de ubicación y centra el mapa en la posición GPS. El pin se puede arrastrar (o tocar el mapa) para corregir el punto, y la dirección se recalcula y se puede editar. Se guardan las coordenadas del pin. Sin permiso, la ubicación se marca a mano en el mapa.
+Al llegar al paso 2 de la solicitud se pide el permiso de ubicación, explicando para qué se usa (RNF-PRIV-002), y el mapa se centra en la posición GPS. El pin se puede arrastrar (o tocar el mapa) para corregir el punto, y la dirección se recalcula y se puede editar. Se guardan las coordenadas del pin. Sin permiso, la ubicación se marca a mano en el mapa.
 
 - **Web:** Leaflet. La geolocalización del navegador exige `https` o `localhost`.
 - **Android / iOS:** Leaflet dentro de un WebView. Funciona en Expo Go y no necesita clave de Google Maps.

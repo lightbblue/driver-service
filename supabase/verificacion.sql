@@ -1,13 +1,11 @@
--- Diagnóstico del esquema de las etapas 2.1 y 2.2. Solo lectura: se puede correr en el
+-- Diagnóstico del esquema de solicitudes. Solo lectura: se puede correr en el
 -- SQL Editor antes y después de aplicar las migraciones.
 
 -- Columnas
 select table_name, column_name, data_type, is_nullable, column_default
 from information_schema.columns
 where table_schema = 'public'
-  and table_name in ('perfiles', 'mecanicos', 'especialidades', 'mecanico_especialidades',
-                     'categorias_averia', 'servicios', 'servicio_estados',
-                     'solicitudes', 'historial_solicitudes')
+  and table_name in ('solicitudes', 'historial_solicitudes', 'mecanicos', 'categorias_averia', 'perfiles')
 order by table_name, ordinal_position;
 
 -- Claves foráneas y restricciones
@@ -38,8 +36,6 @@ order by 1, 2;
 -- Tablas publicadas en Realtime
 select tablename from pg_publication_tables where pubname = 'supabase_realtime';
 
--- Comparación de datos migrados: filas en las tablas viejas y en las nuevas
-select (select count(*) from public.solicitudes)           as solicitudes,
-       (select count(*) from public.servicios)             as servicios,
-       (select count(*) from public.historial_solicitudes) as historial_viejo,
-       (select count(*) from public.servicio_estados)      as servicio_estados;
+-- Solicitudes por estado y su historial
+select estado, count(*) from public.solicitudes group by estado order by 1;
+select count(*) as hitos_de_historial from public.historial_solicitudes;
