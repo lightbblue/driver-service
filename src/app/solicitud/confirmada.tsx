@@ -7,7 +7,7 @@ import { Boton, Pantalla } from '@/components/ui';
 /** Cierre del flujo de solicitud (RF-VIEW-006, paso 4): la solicitud ya está guardada. */
 export default function SolicitudConfirmadaScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, codigo } = useLocalSearchParams<{ id?: string; codigo?: string }>();
 
   return (
     <Pantalla bordes={['top', 'bottom']}>
@@ -24,10 +24,10 @@ export default function SolicitudConfirmadaScreen() {
           camino desde el seguimiento o desde Mis solicitudes.
         </Text>
 
-        {id ? (
+        {codigo ? (
           <View className="mt-2 rounded-full border border-borde bg-superficie px-3 py-1.5">
             <Text testID="texto-codigo-solicitud" className="text-mini font-semibold text-acento">
-              Solicitud RS-{id.slice(0, 8).toUpperCase()}
+              Solicitud #{codigo}
             </Text>
           </View>
         ) : null}

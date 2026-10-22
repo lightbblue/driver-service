@@ -88,7 +88,7 @@ export default function SeguimientoScreen() {
   const esCliente = !!servicio && servicio.cliente_id === detalle.datos?.usuarioId;
   const esAsignado = !!servicio && !!mecanicoId && servicio.mecanico_id === mecanicoId;
   const puedeAceptar =
-    !!servicio && !!mecanicoId && servicio.estado === 'solicitado' && !servicio.mecanico_id;
+    !!servicio && !!mecanicoId && servicio.estado === 'pendiente' && !servicio.mecanico_id;
 
   const proximo: EstadoServicio | null = !servicio
     ? null
@@ -229,7 +229,7 @@ export default function SeguimientoScreen() {
                     </Pressable>
                   ) : null}
                 </View>
-              ) : servicio.estado === 'solicitado' ? (
+              ) : servicio.estado === 'pendiente' ? (
                 <Text className="text-chico text-texto-tenue">
                   Estamos esperando que un mecánico acepte tu solicitud.
                 </Text>

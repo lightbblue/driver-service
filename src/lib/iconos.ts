@@ -40,7 +40,7 @@ const EXITO = '#22C55E';
 const PELIGRO = '#EF4444';
 
 const ESTADOS: Record<EstadoServicio, DescriptorEstado> = {
-  solicitado: { etiqueta: 'Buscando mecánico', hito: 'Solicitud enviada', icono: 'paper-plane-outline', color: 'text-acento', colorIcono: ACENTO },
+  pendiente: { etiqueta: 'Buscando mecánico', hito: 'Solicitud enviada', icono: 'paper-plane-outline', color: 'text-acento', colorIcono: ACENTO },
   aceptado: { etiqueta: 'Aceptada', hito: 'El mecánico aceptó', icono: 'person-add-outline', color: 'text-acento', colorIcono: ACENTO },
   en_camino: { etiqueta: 'Mecánico en camino', hito: 'En camino', icono: 'bicycle-outline', color: 'text-exito', colorIcono: EXITO },
   llegue: { etiqueta: 'Mecánico en el lugar', hito: 'Llegó al lugar', icono: 'flag-outline', color: 'text-exito', colorIcono: EXITO },
@@ -50,5 +50,5 @@ const ESTADOS: Record<EstadoServicio, DescriptorEstado> = {
 };
 
 export function descriptorEstado(estado: EstadoServicio): DescriptorEstado {
-  return ESTADOS[estado] ?? ESTADOS.solicitado;
+  return ESTADOS[estado] ?? ESTADOS.pendiente;
 }

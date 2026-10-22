@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 import type { UbicacionServicio } from '@/types';
 
-type Direccion = Pick<UbicacionServicio, 'direccion' | 'localidad'>;
+type Direccion = Pick<UbicacionServicio, 'direccion'>;
 
 export function coordenadasComoTexto(latitud: number, longitud: number): string {
   return `${latitud.toFixed(6)}, ${longitud.toFixed(6)}`;
@@ -24,7 +24,7 @@ async function direccionNativa(latitud: number, longitud: number): Promise<Direc
 
   const calle = [lugar.street, lugar.streetNumber].filter(Boolean).join(' ');
   const direccion = unir([calle || lugar.name, lugar.city ?? lugar.subregion, lugar.region]);
-  return direccion ? { direccion, localidad: lugar.city ?? lugar.subregion ?? null } : null;
+  return direccion ? { direccion } : null;
 }
 
 /**
@@ -51,7 +51,7 @@ async function direccionNominatim(latitud: number, longitud: number): Promise<Di
   const calle = [a.road, a.house_number].filter(Boolean).join(' ');
   const direccion = unir([calle, localidad, a.state]) || datos.display_name || '';
 
-  return direccion ? { direccion, localidad } : null;
+  return direccion ? { direccion } : null;
 }
 
 /**
@@ -71,7 +71,7 @@ export async function obtenerDireccion(latitud: number, longitud: number): Promi
     }
   }
 
-  return { direccion: coordenadasComoTexto(latitud, longitud), localidad: null };
+  return { direccion: coordenadasComoTexto(latitud, longitud) };
 }
 
 /** Pide permiso y devuelve la posición GPS actual con su dirección. */
@@ -103,7 +103,7 @@ export async function obtenerUbicacionActual(): Promise<UbicacionServicio> {
   }
 
   const { latitude, longitude } = posicion.coords;
-  const { direccion, localidad } = await obtenerDireccion(latitude, longitude);
+  const { direccion } = await obtenerDireccion(latitude, longitude);
 
-  return { latitud: latitude, longitud: longitude, direccion, localidad, referencia: null };
+  return { latitud: latitude, longitud: longitude, direccion };
 }

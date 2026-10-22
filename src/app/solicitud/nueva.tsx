@@ -1,7 +1,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -48,8 +48,9 @@ export default function NuevaSolicitudScreen() {
   /** Coordenadas elegidas: las del GPS o las del pin si el usuario lo movió. */
   const [ubicacion, setUbicacion] = useState<UbicacionServicio | null>(null);
   const [direccion, setDireccion] = useState('');
-  const [referencia, setReferencia] = useState('');
-  const [buscandoGps, setBuscandoGps] = useState(true);
+  const [buscandoGps, setBuscandoGps] = useState(false);
+  /** RNF-PRIV-002: el permiso se pide recién al llegar al paso de ubicación. */
+  const [gpsPedido, setGpsPedido] = useState(false);
   const [errorGps, setErrorGps] = useState<string | null>(null);
   const [resolviendoDireccion, setResolviendoDireccion] = useState(false);
   const [mapaActivo, setMapaActivo] = useState(false);
@@ -58,6 +59,7 @@ export default function NuevaSolicitudScreen() {
 
   const buscarUbicacion = useCallback(async () => {
     const consulta = ++consultaRef.current;
+    setGpsPedido(true);
     setBuscandoGps(true);
     setErrorGps(null);
 
@@ -74,29 +76,17 @@ export default function NuevaSolicitudScreen() {
     }
   }, []);
 
-  // Al abrir la pantalla se pide la posición al GPS, que es un sistema externo.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void buscarUbicacion();
-  }, [buscarUbicacion]);
-
   /** El usuario arrastró el pin o tocó el mapa: se guardan esas coordenadas. */
   const moverPin = useCallback(async (latitud: number, longitud: number) => {
     const consulta = ++consultaRef.current;
     setBuscandoGps(false);
-    setUbicacion({
-      latitud,
-      longitud,
-      direccion: coordenadasComoTexto(latitud, longitud),
-      localidad: null,
-      referencia: null,
-    });
+    setUbicacion({ latitud, longitud, direccion: coordenadasComoTexto(latitud, longitud) });
     setResolviendoDireccion(true);
 
     const resultado = await obtenerDireccion(latitud, longitud);
     if (consulta !== consultaRef.current) return;
 
-    setUbicacion({ latitud, longitud, ...resultado, referencia: null });
+    setUbicacion({ latitud, longitud, ...resultado });
     setDireccion(resultado.direccion);
     setResolviendoDireccion(false);
   }, []);
@@ -129,6 +119,7 @@ export default function NuevaSolicitudScreen() {
     }
 
     if (!esUltimoPaso) {
+      if (paso === 1 && !gpsPedido) void buscarUbicacion();
       setPaso(paso + 1);
       return;
     }
@@ -138,13 +129,13 @@ export default function NuevaSolicitudScreen() {
     setEnviando(true);
 
     try {
-      const id = await crearSolicitud({
+      const { id, codigo } = await crearSolicitud({
         categoriaId: categoriaElegida.id,
         descripcion,
-        ubicacion: { ...ubicacion, direccion: direccion.trim(), referencia: referencia.trim() || null },
+        ubicacion: { ...ubicacion, direccion: direccion.trim() },
       });
 
-      router.replace({ pathname: '/solicitud/confirmada', params: { id } });
+      router.replace({ pathname: '/solicitud/confirmada', params: { id, codigo } });
     } catch (error) {
       Alert.alert(
         'No se pudo enviar la solicitud',
@@ -234,7 +225,8 @@ export default function NuevaSolicitudScreen() {
                     Tu ubicación
                   </Text>
                   <Text className="text-chico text-texto-tenue">
-                    Arrastrá el pin o tocá el mapa para ajustar el punto exacto.
+                    Usamos tu ubicación solo para que el mecánico llegue a vos. Arrastrá el pin o
+                    tocá el mapa para ajustar el punto exacto.
                   </Text>
                 </View>
 
@@ -286,17 +278,6 @@ export default function NuevaSolicitudScreen() {
                       ? 'Buscando la dirección del punto marcado...'
                       : 'Podés corregir la dirección. Las coordenadas son las del pin.'}
                   </Text>
-
-                  <CampoTexto
-                    testID="campo-referencia"
-                    etiqueta="Referencia (opcional)"
-                    placeholder="Ej: frente a la estación de servicio"
-                    icono="flag-outline"
-                    value={referencia}
-                    onChangeText={setReferencia}
-                    editable={!!ubicacion}
-                    maxLength={120}
-                  />
 
                   {ubicacion ? (
                     <Text testID="texto-coordenadas" className="text-mini text-texto-tenue">
@@ -356,13 +337,7 @@ export default function NuevaSolicitudScreen() {
                   titulo="Ubicación"
                   valor={
                     ubicacion
-                      ? [
-                          direccion || 'Sin dirección',
-                          referencia.trim(),
-                          `${ubicacion.latitud.toFixed(5)}, ${ubicacion.longitud.toFixed(5)}`,
-                        ]
-                          .filter(Boolean)
-                          .join('\n')
+                      ? `${direccion || 'Sin dirección'}\n${ubicacion.latitud.toFixed(5)}, ${ubicacion.longitud.toFixed(5)}`
                       : 'Sin ubicación'
                   }
                 />

@@ -9,8 +9,12 @@
 
 export type RolUsuario = 'cliente' | 'mecanico' | 'admin';
 
+/**
+ * Estados del servicio (RF-STATE-001). `pendiente` es el estado inicial que la
+ * base ya usaba; equivale a "Solicitado" en el SRS.
+ */
 export type EstadoServicio =
-  | 'solicitado'
+  | 'pendiente'
   | 'aceptado'
   | 'en_camino'
   | 'llegue'
@@ -78,44 +82,43 @@ export interface CategoriaAveria {
   orden: number;
 }
 
-/** Objeto anidado que en `servicios` se aplana en columnas (documento 03, sección 13). */
+/** Columnas `latitud`, `longitud` y `direccion` de `solicitudes`. */
 export interface UbicacionServicio {
   latitud: number;
   longitud: number;
   direccion: string;
-  localidad: string | null;
-  referencia: string | null;
 }
 
-/** Tabla `servicio_estados`: bitácora inmutable de cambios de estado. */
+/** Tabla `historial_solicitudes`: bitácora de cambios de estado (RF-DATA-004). */
 export interface HitoServicio {
-  id: number;
+  id: string;
   estado_anterior: EstadoServicio | null;
   estado_nuevo: EstadoServicio;
+  /** Usuario que hizo el cambio. */
   actor_id: string | null;
   ocurrido_en: string;
+  /** Columna `nota`: observación del cambio o motivo de la cancelación. */
   observacion: string | null;
 }
 
 export type ActorCancelacion = 'cliente' | 'mecanico';
 
-/** Taller asignado (`mecanicos`) con el contacto de su perfil. */
+/** Taller asignado (tabla `mecanicos`). */
 export interface MecanicoAsignado {
   id: string;
-  nombre: string | null;
+  nombre: string;
   telefono: string | null;
 }
 
-/** Tabla `servicios` con su categoría, su mecánico y su historial. */
+/** Tabla `solicitudes` con su categoría, su mecánico y su historial. */
 export interface Servicio {
   id: string;
-  /** Código legible generado por la base: RS-2026-0013. */
+  /** Código legible generado por la base: RS-2026-0013 (RF-ASSIST-005). */
   codigo: string;
   cliente_id: string;
   mecanico_id: string | null;
   mecanico: MecanicoAsignado | null;
-  categoria_id: string;
-  categoria_codigo: string | null;
+  categoria_id: string | null;
   categoria_nombre: string;
   categoria_icono: string | null;
   descripcion: string | null;
@@ -123,15 +126,9 @@ export interface Servicio {
   estado: EstadoServicio;
   eta_minutos: number | null;
   motivo_cancelacion: string | null;
-  /** Derivado del `actor_id` del hito de cancelación. */
+  /** Derivado del actor del hito de cancelación. */
   cancelado_por: ActorCancelacion | null;
   creado_en: string;
-  aceptado_en: string | null;
-  en_camino_en: string | null;
-  llegada_en: string | null;
-  inicio_trabajo_en: string | null;
-  finalizado_en: string | null;
-  cancelado_en: string | null;
   actualizado_en: string;
   /** Ordenado del más antiguo al más reciente. */
   historial: HitoServicio[];

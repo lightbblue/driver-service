@@ -21,7 +21,7 @@ export function LineaTiempo({ servicio }: { servicio: Servicio }) {
   const filas: Fila[] =
     servicio.estado === 'cancelada'
       ? [
-          ...FLUJO_ESTADOS.map((estado) => ({ estado, hito: ultimo(estado) })).filter((f) => f.hito || f.estado === 'solicitado'),
+          ...FLUJO_ESTADOS.map((estado) => ({ estado, hito: ultimo(estado) })).filter((f) => f.hito || f.estado === 'pendiente'),
           { estado: 'cancelada', hito: ultimo('cancelada') },
         ]
       : FLUJO_ESTADOS.map((estado) => ({ estado, hito: ultimo(estado) }));
@@ -30,9 +30,9 @@ export function LineaTiempo({ servicio }: { servicio: Servicio }) {
     <View testID="linea-tiempo">
       {filas.map((fila, indice) => {
         const d = descriptorEstado(fila.estado);
-        const ocurrio = !!fila.hito || fila.estado === 'solicitado';
+        const ocurrio = !!fila.hito || fila.estado === 'pendiente';
         const esUltima = indice === filas.length - 1;
-        const fecha = fila.hito?.ocurrido_en ?? (fila.estado === 'solicitado' ? servicio.creado_en : null);
+        const fecha = fila.hito?.ocurrido_en ?? (fila.estado === 'pendiente' ? servicio.creado_en : null);
 
         return (
           <View key={fila.estado} className="flex-row gap-3">
