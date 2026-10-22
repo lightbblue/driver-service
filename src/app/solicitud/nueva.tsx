@@ -45,6 +45,7 @@ export default function NuevaSolicitudScreen() {
   const [enviando, setEnviando] = useState(false);
   const [direccionEditada, setDireccionEditada] = useState<string | null>(null);
   const [actualizandoUbicacion, setActualizandoUbicacion] = useState(false);
+  const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<UbicacionServicio | null>(null);
 
 
   const categoriaElegida =
@@ -52,8 +53,33 @@ export default function NuevaSolicitudScreen() {
 
   const esUltimoPaso = paso === PASOS.length;
 
+  const ubicacionActual = ubicacionSeleccionada ?? ubicacion.datos;
+
+  const moverMarcador = (latitud: number, longitud: number) => {
+    const base = ubicacionSeleccionada ?? ubicacion.datos;
+
+    if (!base) {
+      setUbicacionSeleccionada({
+        latitud,
+        longitud,
+        direccion: `${latitud.toFixed(6)}, ${longitud.toFixed(6)}`,
+        localidad: null,
+        referencia: null,
+      });
+    } else {
+      setUbicacionSeleccionada({
+        ...base,
+        latitud,
+        longitud,
+        direccion: `${latitud.toFixed(6)}, ${longitud.toFixed(6)}`,
+      });
+    }
+
+    setDireccionEditada(`${latitud.toFixed(6)}, ${longitud.toFixed(6)}`);
+  };
+
   const direccionActual =
-    direccionEditada ?? ubicacion.datos?.direccion ?? '';
+    direccionEditada ?? ubicacionActual?.direccion ?? '';
 
   const retroceder = () => {
     if (paso > 1) {
@@ -70,7 +96,7 @@ export default function NuevaSolicitudScreen() {
 
     try {
       const nuevaUbicacion = await obtenerUbicacionActual();
-      ubicacion.recargar();
+      setUbicacionSeleccionada(nuevaUbicacion);
       setDireccionEditada(nuevaUbicacion.direccion);
     } catch (error) {
       Alert.alert(
@@ -101,7 +127,7 @@ export default function NuevaSolicitudScreen() {
         return;
       }
 
-      if (paso === 2 && !ubicacion.datos) {
+      if (paso === 2 && !ubicacionActual) {
         Alert.alert(
           'Ubicación no disponible',
           'Usá el botón de ubicación actual e intentá nuevamente.',
@@ -118,7 +144,7 @@ export default function NuevaSolicitudScreen() {
       return;
     }
 
-    if (!ubicacion.datos || !direccionActual.trim()) {
+    if (!ubicacionActual || !direccionActual.trim()) {
       Alert.alert(
         'Ubicación no disponible',
         'Obtené tu ubicación o ingresá una dirección.',
@@ -131,16 +157,19 @@ export default function NuevaSolicitudScreen() {
     setEnviando(true);
 
     try {
-      await crearSolicitud({
+      const solicitudId = await crearSolicitud({
         categoriaId: categoriaElegida.id,
         descripcion,
         ubicacion: {
-          ...ubicacion.datos,
+          ...ubicacionActual,
           direccion: direccionActual.trim(),
         },
       });
 
-      router.replace('/solicitud/confirmada');
+      router.replace({
+        pathname: '/solicitud/confirmada',
+        params: { id: solicitudId },
+      });
     } catch (error) {
       Alert.alert(
         'No se pudo enviar la solicitud',
@@ -250,7 +279,11 @@ export default function NuevaSolicitudScreen() {
                 </Pressable>
               </View>
 
-              <MapaEstatico etiqueta="Vista ilustrativa de ubicación" />
+              <MapaEstatico
+                etiqueta="Elegí dónde necesitás asistencia"
+                ubicacion={ubicacionActual}
+                onMover={moverMarcador}
+              />
 
               {ubicacion.cargando && !ubicacion.datos ? (
                 <Cargando mensaje="Obteniendo ubicación..." />
@@ -271,10 +304,10 @@ export default function NuevaSolicitudScreen() {
                     las coordenadas, usá el botón de ubicación actual.
                   </Text>
 
-                  {ubicacion.datos ? (
+                  {ubicacionActual ? (
                     <Text className="text-mini text-texto-tenue">
-                      Coordenadas GPS: {ubicacion.datos.latitud.toFixed(5)},{' '}
-                      {ubicacion.datos.longitud.toFixed(5)}
+                      Coordenadas seleccionadas: {ubicacionActual.latitud.toFixed(5)},{' '}
+                      {ubicacionActual.longitud.toFixed(5)}
                     </Text>
                   ) : (
                     <Text className="text-mini text-texto-tenue">

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import type * as Leaflet from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -16,6 +16,8 @@ export function MapaEstatico({
   ubicacion,
   onMover,
 }: MapaEstaticoProps) {
+  const [estadoGps, setEstadoGps] = useState('Buscando tu ubicación...');
+  const [coordenadasGps, setCoordenadasGps] = useState('Esperando coordenadas...');
   const contenedorRef = useRef<HTMLDivElement | null>(null);
   const mapaRef = useRef<Leaflet.Map | null>(null);
   const marcadorRef = useRef<Leaflet.Marker | null>(null);
@@ -50,6 +52,47 @@ export function MapaEstatico({
         draggable: true,
         autoPan: true,
       }).addTo(mapa);
+
+      // PUNTO_AZUL_GPS: ubicación real del dispositivo.
+      if (navigator.geolocation) {
+        setEstadoGps('Solicitando permiso de ubicación...');
+        navigator.geolocation.getCurrentPosition(
+          (posicion) => {
+            if (cancelado) return;
+            setEstadoGps('Ubicación obtenida por el navegador');
+            setCoordenadasGps(`Latitud: ${posicion.coords.latitude} | Longitud: ${posicion.coords.longitude} | Precisión: ${Math.round(posicion.coords.accuracy)} metros`);
+            console.log('[GPS] Latitud:', posicion.coords.latitude);
+            console.log('[GPS] Longitud:', posicion.coords.longitude);
+            console.log('[GPS] Precisión estimada en metros:', posicion.coords.accuracy);
+
+
+            const actual: Leaflet.LatLngExpression = [
+              posicion.coords.latitude,
+              posicion.coords.longitude,
+            ];
+
+            L.circleMarker(actual, {
+              radius: 8,
+              color: '#ffffff',
+              weight: 3,
+              fillColor: '#1688ff',
+              fillOpacity: 1,
+
+})
+              .addTo(mapa)
+              .bindPopup('Tu ubicación actual');
+
+            mapa.setView(actual, 16);
+          },
+          (error) => {
+            if (!cancelado) setEstadoGps(`No se pudo obtener el GPS: ${error.message}`);
+            console.warn('[GPS] No se pudo detectar la ubicación:', error.message);
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+        );
+      } else {
+        setEstadoGps('Este navegador no ofrece geolocalización.');
+      }
 
       marcador.on('dragend', () => {
         const posicion = marcador.getLatLng();
@@ -110,6 +153,8 @@ export function MapaEstatico({
       />
 
       <View className="px-3 py-2">
+        <Text>{estadoGps}</Text>
+        <Text>{coordenadasGps}</Text>
         <Text>
           Tocá el mapa o arrastrá el pin para corregir la ubicación.
         </Text>

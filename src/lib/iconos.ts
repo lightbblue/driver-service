@@ -32,6 +32,7 @@ type DescriptorEstado = {
 };
 
 const ESTADOS: Record<EstadoServicio, DescriptorEstado> = {
+  pendiente: { etiqueta: 'Esperando mecánico', icono: 'time-outline', color: 'text-acento' },
   solicitado: { etiqueta: 'Solicitud enviada', icono: 'paper-plane-outline', color: 'text-acento' },
   aceptado: { etiqueta: 'Mecánico asignado', icono: 'person-add-outline', color: 'text-acento' },
   en_camino: { etiqueta: 'Mecánico en camino', icono: 'bicycle-outline', color: 'text-exito' },

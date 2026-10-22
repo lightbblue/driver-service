@@ -119,3 +119,26 @@ export async function crearSolicitud(datos: {
 }
 
 
+/** Cancela una solicitud propia usando la sesión autenticada. */
+export async function cancelarSolicitud(
+  solicitudId: string,
+  motivo = 'Cancelación de solicitud de prueba',
+): Promise<void> {
+  const { data: usuarioData, error: errorUsuario } =
+    await supabase.auth.getUser();
+
+  if (errorUsuario || !usuarioData.user) {
+    throw new Error('Iniciá sesión para cancelar la solicitud.');
+  }
+
+  const { error } = await supabase.rpc('cambiar_estado_solicitud', {
+    p_solicitud_id: solicitudId,
+    p_estado: 'cancelada',
+    p_nota: motivo,
+    p_eta_minutos: null,
+  });
+
+  if (error) {
+    throw new Error(`No se pudo cancelar la solicitud: ${error.message}`);
+  }
+}

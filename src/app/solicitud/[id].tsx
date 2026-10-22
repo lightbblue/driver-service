@@ -1,7 +1,12 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  useLocalSearchParams,
+  useRouter } from 'expo-router';
+import { useCallback,
+  useEffect,
+  useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,8 +15,7 @@ import {
 } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
-
-type Solicitud = {
+import { cancelarSolicitud } from '@/services/solicitudes';type Solicitud = {
   id: string;
   categoria_id: string | null;
   descripcion: string | null;
@@ -59,6 +63,66 @@ export default function DetalleSolicitudScreen() {
   const [categoria, setCategoria] = useState('Asistencia mecánica');
   const [cargando, setCargando] = useState(true);
   const [errorMensaje, setErrorMensaje] = useState('');
+
+  const [cancelando, setCancelando] = useState(false);
+
+  async function ejecutarCancelacion() {
+    if (!id || !solicitud || cancelando) return;
+
+    setCancelando(true);
+    setErrorMensaje('');
+
+    try {
+      await cancelarSolicitud(
+        id,
+        'Cancelación solicitada por el cliente',
+      );
+      await cargarDetalle();
+      Alert.alert(
+        'Solicitud cancelada',
+        'La solicitud se canceló correctamente.',
+      );
+    } catch (error) {
+      const mensaje =
+        error instanceof Error
+          ? error.message
+          : 'Ocurrió un error inesperado.';
+
+      setErrorMensaje(mensaje);
+      Alert.alert('No se pudo cancelar', mensaje);
+    } finally {
+      setCancelando(false);
+    }
+  }
+
+  function manejarCancelacion() {
+    if (!id || !solicitud || cancelando) return;
+
+    // En navegador usamos la confirmación nativa del navegador.
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      const confirmado = window.confirm(
+        '¿Querés cancelar esta solicitud?',
+      );
+
+      if (confirmado) {
+        void ejecutarCancelacion();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Cancelar solicitud',
+      '¿Querés cancelar esta solicitud?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Sí, cancelar',
+          style: 'destructive',
+          onPress: () => void ejecutarCancelacion(),
+        },
+      ],
+    );
+  }
 
   const cargarDetalle = useCallback(async () => {
     setCargando(true);
@@ -200,6 +264,19 @@ export default function DetalleSolicitudScreen() {
               ? 'La solicitud tiene un mecánico asociado.'
               : 'Todavía no hay un mecánico asociado a esta solicitud.'}
           </Text>
+
+          {!['cancelada', 'finalizado', 'suspendido'].includes(solicitud.estado) ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={cancelando}
+              onPress={() => void manejarCancelacion()}
+              style={styles.botonCancelar}
+            >
+              <Text style={styles.textoBotonCancelar}>
+                {cancelando ? 'Cancelando...' : 'Cancelar solicitud'}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </ScrollView>
@@ -207,6 +284,19 @@ export default function DetalleSolicitudScreen() {
 }
 
 const styles = StyleSheet.create({
+  botonCancelar: {
+    marginTop: 22,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+    backgroundColor: '#dc2626',
+    alignItems: 'center',
+  },
+  textoBotonCancelar: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   pantalla: {
     flexGrow: 1,
     padding: 20,

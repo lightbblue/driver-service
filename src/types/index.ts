@@ -7,9 +7,8 @@
  * resuelve una función o una vista, y la capa de servicios los sigue exponiendo igual.
  */
 
-export type RolUsuario = 'cliente' | 'mecanico' | 'admin';
-
 export type EstadoServicio =
+  | 'pendiente'
   | 'solicitado'
   | 'aceptado'
   | 'en_camino'
@@ -17,6 +16,8 @@ export type EstadoServicio =
   | 'trabajando'
   | 'finalizado'
   | 'cancelada';
+
+export type RolUsuario = 'cliente' | 'mecanico' | 'admin';
 
 /** Estadísticas del perfil. Derivadas: en E2 salen de una vista agregada. */
 export interface EstadisticasPerfil {
