@@ -26,21 +26,29 @@ export function iconoDeCategoria(codigo: string): NombreIcono {
 
 type DescriptorEstado = {
   etiqueta: string;
+  /** Texto del hito en la línea de tiempo del seguimiento. */
+  hito: string;
   icono: NombreIcono;
   /** Clase de NativeWind del tema, nunca un color literal. */
   color: string;
+  /** El mismo color para los íconos, que no aceptan clases. */
+  colorIcono: string;
 };
 
+const ACENTO = '#FFC107';
+const EXITO = '#22C55E';
+const PELIGRO = '#EF4444';
+
 const ESTADOS: Record<EstadoServicio, DescriptorEstado> = {
-  solicitado: { etiqueta: 'Solicitud enviada', icono: 'paper-plane-outline', color: 'text-acento' },
-  aceptado: { etiqueta: 'Mecánico asignado', icono: 'person-add-outline', color: 'text-acento' },
-  en_camino: { etiqueta: 'Mecánico en camino', icono: 'bicycle-outline', color: 'text-exito' },
-  llegue: { etiqueta: 'En el lugar', icono: 'flag-outline', color: 'text-exito' },
-  trabajando: { etiqueta: 'Trabajando', icono: 'build-outline', color: 'text-acento' },
-  finalizado: { etiqueta: 'Finalizado', icono: 'checkmark-circle-outline', color: 'text-exito' },
-  cancelada: { etiqueta: 'Cancelada', icono: 'close-circle-outline', color: 'text-peligro' },
+  solicitado: { etiqueta: 'Buscando mecánico', hito: 'Solicitud enviada', icono: 'paper-plane-outline', color: 'text-acento', colorIcono: ACENTO },
+  aceptado: { etiqueta: 'Aceptada', hito: 'El mecánico aceptó', icono: 'person-add-outline', color: 'text-acento', colorIcono: ACENTO },
+  en_camino: { etiqueta: 'Mecánico en camino', hito: 'En camino', icono: 'bicycle-outline', color: 'text-exito', colorIcono: EXITO },
+  llegue: { etiqueta: 'Mecánico en el lugar', hito: 'Llegó al lugar', icono: 'flag-outline', color: 'text-exito', colorIcono: EXITO },
+  trabajando: { etiqueta: 'Trabajo en curso', hito: 'Inició el trabajo', icono: 'build-outline', color: 'text-acento', colorIcono: ACENTO },
+  finalizado: { etiqueta: 'Finalizado', hito: 'Trabajo finalizado', icono: 'checkmark-circle-outline', color: 'text-exito', colorIcono: EXITO },
+  cancelada: { etiqueta: 'Cancelada', hito: 'Solicitud cancelada', icono: 'close-circle-outline', color: 'text-peligro', colorIcono: PELIGRO },
 };
 
 export function descriptorEstado(estado: EstadoServicio): DescriptorEstado {
-  return ESTADOS[estado];
+  return ESTADOS[estado] ?? ESTADOS.solicitado;
 }

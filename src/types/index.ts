@@ -78,36 +78,54 @@ export interface CategoriaAveria {
   orden: number;
 }
 
-/** Objeto anidado que en E2 se aplana en columnas de `servicios`. */
+/** Columnas `latitud`, `longitud`, `direccion` y `localidad` de `solicitudes`. */
 export interface UbicacionServicio {
   latitud: number;
   longitud: number;
   direccion: string;
   localidad: string | null;
-  referencia: string | null;
 }
 
-/** Fila de `servicio_estados`. */
+/** Fila de `historial_solicitudes`. */
 export interface HitoServicio {
+  id: string;
+  estado_anterior: EstadoServicio | null;
   estado_nuevo: EstadoServicio;
-  ocurrido_en: string | null;
+  ocurrido_en: string;
   observacion: string | null;
 }
 
-/** Tabla `servicios`. */
+export type ActorCancelacion = 'cliente' | 'mecanico';
+
+/** Datos públicos del taller asignado (tabla `mecanicos`). */
+export interface MecanicoAsignado {
+  id: string;
+  nombre: string | null;
+  telefono: string | null;
+}
+
+/** Tabla `solicitudes` con su categoría, su mecánico y su historial. */
 export interface Servicio {
   id: string;
+  /** Derivado del id: identificador corto para mostrar. */
   codigo: string;
   cliente_id: string;
   mecanico_id: string | null;
-  categoria_codigo: string;
+  mecanico: MecanicoAsignado | null;
+  categoria_id: string | null;
   categoria_nombre: string;
+  categoria_icono: string | null;
   descripcion: string | null;
   ubicacion: UbicacionServicio;
   estado: EstadoServicio;
   eta_minutos: number | null;
+  motivo_cancelacion: string | null;
+  cancelado_por: ActorCancelacion | null;
   creado_en: string;
+  actualizado_en: string;
+  /** Derivado del historial. */
   finalizado_en: string | null;
+  /** Ordenado del más antiguo al más reciente. */
   historial: HitoServicio[];
 }
 

@@ -80,6 +80,45 @@ Verificado en Android 10+ (`RNF-COMP-001`).
 
 ---
 
+## Supabase
+
+La app lee las credenciales de `.env` (no versionado):
+
+```
+EXPO_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co
+EXPO_PUBLIC_SUPABASE_KEY=<publishable / anon key>
+```
+
+### Puesta en marcha de la base
+
+1. Ejecutar en el **SQL Editor** cada archivo de `supabase/migrations/`, en orden. Son idempotentes.
+2. Comprobar el resultado con `npm run verificar:supabase` (solo lecturas).
+3. `supabase/verificacion.sql` lista columnas, restricciones, políticas RLS y triggers, para revisar el esquema desde el SQL Editor.
+
+### Seguimiento del servicio
+
+Los estados de una solicitud son `solicitado → aceptado → en_camino → llegue → trabajando → finalizado`, más `cancelada` hasta antes de iniciar el trabajo. Cada cambio pasa por la función `cambiar_estado_solicitud()`, que valida quién lo hace y desde qué estado, y lo registra en `historial_solicitudes` con la fecha y la observación. La app no puede modificar `solicitudes` directamente: la RLS lo impide.
+
+Una cuenta es de mecánico cuando está vinculada a un taller de `mecanicos`:
+
+```sql
+update public.mecanicos
+set usuario_id = (select id from auth.users where email = 'mecanico@ejemplo.com')
+where id = '<id del taller>';
+```
+
+Con esa cuenta, *Mis solicitudes* muestra las solicitudes disponibles y los servicios asignados, y la pantalla de seguimiento ofrece las acciones de aceptar, salir en camino, registrar la llegada, iniciar y finalizar el trabajo.
+
+### Ubicación
+
+El paso 2 de la solicitud pide permiso de ubicación y centra el mapa en la posición GPS. El pin se puede arrastrar (o tocar el mapa) para corregir el punto, y la dirección se recalcula y se puede editar. Se guardan las coordenadas del pin. Sin permiso, la ubicación se marca a mano en el mapa.
+
+- **Web:** Leaflet. La geolocalización del navegador exige `https` o `localhost`.
+- **Android / iOS:** Leaflet dentro de un WebView. Funciona en Expo Go y no necesita clave de Google Maps.
+- Mapa: teselas de CARTO sobre datos de OpenStreetMap. Direcciones: geocodificador del sistema en el celular y Nominatim (OSM) en la web.
+
+---
+
 ## Estructura del proyecto
 
 ```

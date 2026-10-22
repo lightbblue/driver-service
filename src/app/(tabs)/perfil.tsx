@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { FilaEstadisticas } from '@/components/perfil/fila-estadisticas';
 import { FilaMenu, type ItemMenu } from '@/components/perfil/fila-menu';
 import { Avatar, Boton, Cargando, FondoMarca, LogoRider, Pantalla } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
-import { obtenerUsuarioActual } from '@/services';
+import { cerrarSesion, obtenerUsuarioActual } from '@/services';
 import type { Perfil } from '@/types';
 
 /** Secciones de la maqueta. Ninguna navega en la Entrega 1 (sección 4.4). */
@@ -120,14 +120,18 @@ export default function PerfilScreen() {
             ))}
           </View>
 
-          {/* Navega al login sin limpiar estado: no hay sesión que cerrar (RF-AUTH-005, E2) */}
+          {/* Cierra la sesión de Supabase y borra la guardada en el dispositivo (RF-AUTH-005) */}
           <Boton
             testID="btn-cerrar-sesion"
             titulo="Cerrar sesión"
             variante="peligro"
             icono="log-out-outline"
             className="mt-2"
-            onPress={() => router.replace('/login')}
+            onPress={() =>
+              cerrarSesion()
+                .then(() => router.replace('/login'))
+                .catch((error: Error) => Alert.alert('No se pudo cerrar la sesión', error.message))
+            }
           />
         </View>
       </ScrollView>
