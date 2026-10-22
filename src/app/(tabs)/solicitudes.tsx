@@ -1,5 +1,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Pressable,
@@ -58,6 +59,7 @@ const fechaLegible = (fecha: string) => {
 };
 
 export default function SolicitudesScreen() {
+  const router = useRouter();
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -214,7 +216,17 @@ export default function SolicitudesScreen() {
             </View>
           ) : (
             solicitudes.map((solicitud) => (
-              <View key={solicitud.id} style={styles.tarjeta}>
+              <Pressable
+                key={solicitud.id}
+                accessibilityRole="button"
+                onPress={() =>
+                  router.push({
+                    pathname: '/solicitud/[id]',
+                    params: { id: solicitud.id },
+                  })
+                }
+                style={styles.tarjeta}
+              >
                 <View style={styles.fila}>
                   <Text style={styles.categoria}>
                     {obtenerNombreCategoria(solicitud.categoria_id)}
@@ -248,7 +260,7 @@ export default function SolicitudesScreen() {
                 <Text style={styles.idSolicitud}>
                   Solicitud: {solicitud.id.slice(0, 8)}
                 </Text>
-              </View>
+              </Pressable>
             ))
           )}
         </ScrollView>
