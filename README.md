@@ -91,23 +91,35 @@ EXPO_PUBLIC_SUPABASE_KEY=<publishable / anon key>
 
 ### Puesta en marcha de la base
 
+El esquema sigue el modelo de datos (`03-Rider-Service-Modelo-de-Datos.md`), aplicado por etapas:
+
+| Migración | Contenido |
+|---|---|
+| `…_etapa_2_1_perfiles_mecanicos.sql` | `perfiles` (con alta automática al registrarse), `mecanicos`, `especialidades` y sus políticas RLS |
+| `…_etapa_2_2_servicios.sql` | `categorias_averia`, `servicios`, `servicio_estados`, máquina de estados, funciones y RLS |
+| `…_migrar_solicitudes_a_servicios.sql` | Copia los datos de las tablas anteriores (`solicitudes`, `historial_solicitudes`) al modelo |
+
 1. Ejecutar en el **SQL Editor** cada archivo de `supabase/migrations/`, en orden. Son idempotentes.
 2. Comprobar el resultado con `npm run verificar:supabase` (solo lecturas).
 3. `supabase/verificacion.sql` lista columnas, restricciones, políticas RLS y triggers, para revisar el esquema desde el SQL Editor.
 
+Las tablas `solicitudes` e `historial_solicitudes` quedan como respaldo; una vez comprobada la migración se pueden eliminar.
+
 ### Seguimiento del servicio
 
-Los estados de una solicitud son `solicitado → aceptado → en_camino → llegue → trabajando → finalizado`, más `cancelada` hasta antes de iniciar el trabajo. Cada cambio pasa por la función `cambiar_estado_solicitud()`, que valida quién lo hace y desde qué estado, y lo registra en `historial_solicitudes` con la fecha y la observación. La app no puede modificar `solicitudes` directamente: la RLS lo impide.
+Los estados de un servicio son `solicitado → aceptado → en_camino → llegue → trabajando → finalizado`, más `cancelada` hasta antes de iniciar el trabajo (RN-004, RN-009). Todo cambio pasa por `cambiar_estado_servicio()`; la aceptación, por `aceptar_servicio()`, que es atómica (RN-002). Un trigger valida la transición, completa la marca temporal de cada etapa y registra el cambio en `servicio_estados` con el actor y la observación. La app no puede modificar `servicios` directamente: los privilegios y la RLS lo impiden.
 
-Una cuenta es de mecánico cuando está vinculada a un taller de `mecanicos`:
+Un cliente no puede tener más de una solicitud activa (RN-010), ni un mecánico más de un servicio en curso.
+
+Una cuenta es de mecánico cuando tiene un taller en `mecanicos`. Para crear uno de prueba:
 
 ```sql
-update public.mecanicos
-set usuario_id = (select id from auth.users where email = 'mecanico@ejemplo.com')
-where id = '<id del taller>';
+insert into public.mecanicos (perfil_id, nombre_taller, direccion_taller, localidad, latitud, longitud, disponible)
+values ((select id from auth.users where email = 'mecanico@ejemplo.com'),
+        'Taller de prueba', 'Av. Caamaño 980', 'Pilar', -34.4587, -58.9142, true);
 ```
 
-Con esa cuenta, *Mis solicitudes* muestra las solicitudes disponibles y los servicios asignados, y la pantalla de seguimiento ofrece las acciones de aceptar, salir en camino, registrar la llegada, iniciar y finalizar el trabajo.
+El perfil pasa a tener rol `mecanico` automáticamente. Solo los mecánicos con `disponible = true` ven las solicitudes abiertas y pueden aceptarlas.
 
 ### Ubicación
 

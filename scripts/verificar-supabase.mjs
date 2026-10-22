@@ -1,4 +1,4 @@
-// Verifica que la migración de solicitudes esté aplicada. Solo hace lecturas.
+// Verifica que las migraciones de las etapas 2.1 y 2.2 estén aplicadas. Solo hace lecturas.
 // Uso: node --env-file=.env scripts/verificar-supabase.mjs
 
 const URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -27,9 +27,14 @@ const chequeos = [];
 const chequear = (descripcion, ok) => chequeos.push({ descripcion, ok });
 
 const columnas = {
-  solicitudes: ['localidad', 'eta_minutos', 'motivo_cancelacion', 'cancelado_por', 'actualizado_en'],
-  historial_solicitudes: ['estado_anterior', 'observacion', 'usuario_id'],
-  mecanicos: ['usuario_id'],
+  perfiles: ['nombre_completo', 'email', 'rol', 'localidad', 'eliminado_en'],
+  mecanicos: ['perfil_id', 'nombre_taller', 'direccion_taller', 'radio_cobertura_km', 'calificacion_promedio'],
+  especialidades: ['codigo', 'nombre'],
+  categorias_averia: ['codigo', 'requiere_foto', 'activo', 'orden'],
+  servicios: ['codigo', 'cliente_id', 'mecanico_id', 'estado', 'eta_minutos', 'referencia',
+              'aceptado_en', 'en_camino_en', 'llegada_en', 'inicio_trabajo_en', 'finalizado_en',
+              'cancelado_en', 'motivo_cancelacion'],
+  servicio_estados: ['estado_anterior', 'estado_nuevo', 'actor_id', 'observacion', 'ocurrido_en'],
 };
 
 for (const [tabla, lista] of Object.entries(columnas)) {
@@ -38,24 +43,28 @@ for (const [tabla, lista] of Object.entries(columnas)) {
   }
 }
 
-// La función existe y rechaza a anon (404 significaría que no se creó).
-const rpc = await pedir('rpc/cambiar_estado_solicitud', {
-  method: 'POST',
-  body: JSON.stringify({ p_solicitud_id: '00000000-0000-0000-0000-000000000000', p_estado: 'aceptado' }),
-});
-chequear('función cambiar_estado_solicitud creada', rpc.status !== 404);
-chequear('anon no puede ejecutar cambiar_estado_solicitud', rpc.status === 401 || rpc.status === 403);
+// Las funciones existen y rechazan a anon (404 significaría que no se crearon).
+for (const [funcion, cuerpo] of [
+  ['cambiar_estado_servicio', { p_servicio_id: '00000000-0000-0000-0000-000000000000', p_estado: 'aceptado' }],
+  ['aceptar_servicio', { p_servicio_id: '00000000-0000-0000-0000-000000000000' }],
+  ['mecanico_id_actual', {}],
+]) {
+  const r = await pedir(`rpc/${funcion}`, { method: 'POST', body: JSON.stringify(cuerpo) });
+  chequear(`función ${funcion} creada`, r.status !== 404);
+  chequear(`anon no puede ejecutar ${funcion}`, r.status === 401 || r.status === 403);
+}
 
-// Anon no puede leer solicitudes ni el historial.
-for (const tabla of ['solicitudes', 'historial_solicitudes']) {
+// Anon no puede leer datos de usuarios ni servicios.
+for (const tabla of ['servicios', 'servicio_estados', 'perfiles', 'mecanicos']) {
   const r = await pedir(`${tabla}?select=id&limit=1`);
   const filas = r.ok ? await r.json() : [];
   chequear(`anon no lee ${tabla}`, !r.ok || filas.length === 0);
 }
 
-// Las categorías siguen siendo públicas.
-const categorias = await pedir('categorias_averia?select=id');
-chequear('categorías visibles', categorias.ok && (await categorias.json()).length > 0);
+// El catálogo de categorías sigue siendo público y tiene código.
+const categorias = await pedir('categorias_averia?select=codigo&activo=eq.true');
+const lista = categorias.ok ? await categorias.json() : [];
+chequear('categorías visibles con código', lista.length > 0 && lista.every((c) => c.codigo));
 
 for (const { descripcion, ok } of chequeos) console.log(`${ok ? '✔' : '✘'} ${descripcion}`);
 const fallidos = chequeos.filter((c) => !c.ok).length;
