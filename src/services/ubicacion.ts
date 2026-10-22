@@ -105,5 +105,5 @@ export async function obtenerUbicacionActual(): Promise<UbicacionServicio> {
   const { latitude, longitude } = posicion.coords;
   const { direccion, localidad } = await obtenerDireccion(latitude, longitude);
 
-  return { latitud: latitude, longitud: longitude, direccion, localidad };
+  return { latitud: latitude, longitud: longitude, direccion, localidad, referencia: null };
 }

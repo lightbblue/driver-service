@@ -48,6 +48,7 @@ export default function NuevaSolicitudScreen() {
   /** Coordenadas elegidas: las del GPS o las del pin si el usuario lo movió. */
   const [ubicacion, setUbicacion] = useState<UbicacionServicio | null>(null);
   const [direccion, setDireccion] = useState('');
+  const [referencia, setReferencia] = useState('');
   const [buscandoGps, setBuscandoGps] = useState(true);
   const [errorGps, setErrorGps] = useState<string | null>(null);
   const [resolviendoDireccion, setResolviendoDireccion] = useState(false);
@@ -83,13 +84,19 @@ export default function NuevaSolicitudScreen() {
   const moverPin = useCallback(async (latitud: number, longitud: number) => {
     const consulta = ++consultaRef.current;
     setBuscandoGps(false);
-    setUbicacion({ latitud, longitud, direccion: coordenadasComoTexto(latitud, longitud), localidad: null });
+    setUbicacion({
+      latitud,
+      longitud,
+      direccion: coordenadasComoTexto(latitud, longitud),
+      localidad: null,
+      referencia: null,
+    });
     setResolviendoDireccion(true);
 
     const resultado = await obtenerDireccion(latitud, longitud);
     if (consulta !== consultaRef.current) return;
 
-    setUbicacion({ latitud, longitud, ...resultado });
+    setUbicacion({ latitud, longitud, ...resultado, referencia: null });
     setDireccion(resultado.direccion);
     setResolviendoDireccion(false);
   }, []);
@@ -134,7 +141,7 @@ export default function NuevaSolicitudScreen() {
       const id = await crearSolicitud({
         categoriaId: categoriaElegida.id,
         descripcion,
-        ubicacion: { ...ubicacion, direccion: direccion.trim() },
+        ubicacion: { ...ubicacion, direccion: direccion.trim(), referencia: referencia.trim() || null },
       });
 
       router.replace({ pathname: '/solicitud/confirmada', params: { id } });
@@ -277,8 +284,19 @@ export default function NuevaSolicitudScreen() {
                   <Text className="text-mini text-texto-tenue">
                     {resolviendoDireccion
                       ? 'Buscando la dirección del punto marcado...'
-                      : 'Podés corregir la dirección o agregar una referencia. Las coordenadas son las del pin.'}
+                      : 'Podés corregir la dirección. Las coordenadas son las del pin.'}
                   </Text>
+
+                  <CampoTexto
+                    testID="campo-referencia"
+                    etiqueta="Referencia (opcional)"
+                    placeholder="Ej: frente a la estación de servicio"
+                    icono="flag-outline"
+                    value={referencia}
+                    onChangeText={setReferencia}
+                    editable={!!ubicacion}
+                    maxLength={120}
+                  />
 
                   {ubicacion ? (
                     <Text testID="texto-coordenadas" className="text-mini text-texto-tenue">
@@ -338,7 +356,13 @@ export default function NuevaSolicitudScreen() {
                   titulo="Ubicación"
                   valor={
                     ubicacion
-                      ? `${direccion || 'Sin dirección'}\n${ubicacion.latitud.toFixed(5)}, ${ubicacion.longitud.toFixed(5)}`
+                      ? [
+                          direccion || 'Sin dirección',
+                          referencia.trim(),
+                          `${ubicacion.latitud.toFixed(5)}, ${ubicacion.longitud.toFixed(5)}`,
+                        ]
+                          .filter(Boolean)
+                          .join('\n')
                       : 'Sin ubicación'
                   }
                 />

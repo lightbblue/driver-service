@@ -78,41 +78,44 @@ export interface CategoriaAveria {
   orden: number;
 }
 
-/** Columnas `latitud`, `longitud`, `direccion` y `localidad` de `solicitudes`. */
+/** Objeto anidado que en `servicios` se aplana en columnas (documento 03, sección 13). */
 export interface UbicacionServicio {
   latitud: number;
   longitud: number;
   direccion: string;
   localidad: string | null;
+  referencia: string | null;
 }
 
-/** Fila de `historial_solicitudes`. */
+/** Tabla `servicio_estados`: bitácora inmutable de cambios de estado. */
 export interface HitoServicio {
-  id: string;
+  id: number;
   estado_anterior: EstadoServicio | null;
   estado_nuevo: EstadoServicio;
+  actor_id: string | null;
   ocurrido_en: string;
   observacion: string | null;
 }
 
 export type ActorCancelacion = 'cliente' | 'mecanico';
 
-/** Datos públicos del taller asignado (tabla `mecanicos`). */
+/** Taller asignado (`mecanicos`) con el contacto de su perfil. */
 export interface MecanicoAsignado {
   id: string;
   nombre: string | null;
   telefono: string | null;
 }
 
-/** Tabla `solicitudes` con su categoría, su mecánico y su historial. */
+/** Tabla `servicios` con su categoría, su mecánico y su historial. */
 export interface Servicio {
   id: string;
-  /** Derivado del id: identificador corto para mostrar. */
+  /** Código legible generado por la base: RS-2026-0013. */
   codigo: string;
   cliente_id: string;
   mecanico_id: string | null;
   mecanico: MecanicoAsignado | null;
-  categoria_id: string | null;
+  categoria_id: string;
+  categoria_codigo: string | null;
   categoria_nombre: string;
   categoria_icono: string | null;
   descripcion: string | null;
@@ -120,11 +123,16 @@ export interface Servicio {
   estado: EstadoServicio;
   eta_minutos: number | null;
   motivo_cancelacion: string | null;
+  /** Derivado del `actor_id` del hito de cancelación. */
   cancelado_por: ActorCancelacion | null;
   creado_en: string;
-  actualizado_en: string;
-  /** Derivado del historial. */
+  aceptado_en: string | null;
+  en_camino_en: string | null;
+  llegada_en: string | null;
+  inicio_trabajo_en: string | null;
   finalizado_en: string | null;
+  cancelado_en: string | null;
+  actualizado_en: string;
   /** Ordenado del más antiguo al más reciente. */
   historial: HitoServicio[];
 }

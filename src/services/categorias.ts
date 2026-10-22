@@ -1,35 +1,15 @@
-
+import { lanzar } from '@/lib/errores';
 import { supabase } from '@/lib/supabase';
 import type { CategoriaAveria } from '@/types';
 
+/** Catálogo de averías activo, en el orden definido en la base (RF-ASSIST-002). */
 export async function listarCategoriasAveria(): Promise<CategoriaAveria[]> {
-  console.log('[CATEGORIAS] Iniciando consulta a Supabase');
-
   const { data, error } = await supabase
     .from('categorias_averia')
-    .select('id, nombre, descripcion, icono')
-    .order('nombre');
+    .select('id, codigo, nombre, descripcion, icono, requiere_foto, activo, orden')
+    .eq('activo', true)
+    .order('orden');
 
-  console.log('[CATEGORIAS] Resultado:', {
-    cantidad: data?.length ?? 0,
-    error: error?.message ?? null,
-    datos: data,
-  });
-
-  if (error) {
-    throw new Error(`No se pudieron cargar las categorías: ${error.message}`);
-  }
-
-  return (data ?? []).map((categoria, index) => ({
-    id: categoria.id,
-    codigo: categoria.nombre,
-    nombre: categoria.nombre,
-    descripcion: categoria.descripcion,
-    icono: categoria.icono,
-    requiere_foto: categoria.nombre === 'Accidente',
-    activo: true,
-    orden: index + 1,
-  }));
+  if (error) lanzar(error, 'No se pudieron cargar las categorías');
+  return data as CategoriaAveria[];
 }
-
-

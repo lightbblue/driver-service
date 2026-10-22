@@ -2,7 +2,7 @@
  * Traduce los errores de Supabase y de red a un mensaje para el usuario.
  *
  * Los errores que lanza la base con `raise exception` ya vienen redactados en
- * castellano (ver `cambiar_estado_solicitud`) y se muestran tal cual.
+ * castellano (ver `cambiar_estado_servicio`) y se muestran tal cual.
  */
 
 type ErrorSupabase = { message?: string; code?: string };
@@ -24,8 +24,16 @@ export function mensajeDeError(error: unknown, porDefecto = 'Ocurrió un error i
     return 'No tenés permiso para realizar esta operación.';
   }
 
-  // P0001: excepción propia de una función de la base.
-  if (code === 'P0001' && message) {
+  // Reglas de negocio garantizadas con índices únicos parciales (documento 03, sección 5).
+  if (code === '23505' && message.includes('uq_servicio_activo_por_cliente')) {
+    return 'Ya tenés una solicitud en curso. Cancelala o esperá a que finalice antes de pedir otra.';
+  }
+  if (code === '23505' && message.includes('uq_servicio_activo_por_mecanico')) {
+    return 'Ya tenés un servicio en curso. Finalizalo antes de aceptar otro.';
+  }
+
+  // P0001–P0004: excepciones propias de las funciones de la base.
+  if (/^P000\d$/.test(code) && message) {
     return message;
   }
 
