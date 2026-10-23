@@ -23,4 +23,9 @@ export {
   suscribirseASolicitudes,
 } from './solicitudes';
 export { coordenadasComoTexto, obtenerDireccion, obtenerUbicacionActual } from './ubicacion';
-export { obtenerUsuario, obtenerUsuarioActual } from './usuarios';
+export {
+  actualizarPerfil,
+  actualizarFotoPerfil,
+  obtenerUsuario,
+  obtenerUsuarioActual,
+} from './usuarios';

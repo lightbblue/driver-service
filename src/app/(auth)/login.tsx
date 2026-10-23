@@ -57,29 +57,34 @@ export default function LoginScreen() {
       }
 
       console.log('[LOGIN] Sesión iniciada correctamente');
-
       router.replace('/inicio');
     } catch (error) {
-      console.error('[LOGIN] Error al iniciar sesión:', error);
-
       const mensaje =
-        error instanceof Error ? error.message : '';
+        error instanceof Error ? error.message : String(error);
 
-      if (
-        mensaje.toLowerCase().includes('email not confirmed')
-      ) {
+      const codigo =
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error
+          ? String(error.code)
+          : 'sin código';
+
+      console.error('[LOGIN] Mensaje:', mensaje);
+      console.error('[LOGIN] Código:', codigo);
+
+      const mensajeNormalizado = mensaje.toLowerCase();
+
+      if (mensajeNormalizado.includes('email not confirmed')) {
         setErrorMensaje(
           'Tu correo todavía no está confirmado. Revisá tu email.',
         );
       } else if (
-        mensaje.toLowerCase().includes('invalid login credentials')
+        mensajeNormalizado.includes('invalid login credentials')
       ) {
-        setErrorMensaje(
-          'El correo o la contraseña son incorrectos.',
-        );
+        setErrorMensaje('El correo o la contraseña son incorrectos.');
       } else {
         setErrorMensaje(
-          mensaje || 'No se pudo iniciar sesión. Intentá nuevamente.',
+          'No se pudo iniciar sesión. Revisá los datos e intentá nuevamente.',
         );
       }
     } finally {
@@ -188,4 +193,3 @@ export default function LoginScreen() {
     </Pantalla>
   );
 }
-

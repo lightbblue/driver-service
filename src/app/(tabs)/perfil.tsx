@@ -1,15 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { FilaEstadisticas } from '@/components/perfil/fila-estadisticas';
 import { FilaMenu, type ItemMenu } from '@/components/perfil/fila-menu';
 import { Avatar, Boton, Cargando, FondoMarca, LogoRider, Pantalla } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
-import { cerrarSesion, obtenerUsuarioActual } from '@/services';
+import {
+  actualizarFotoPerfil,
+  cerrarSesion,
+  obtenerUsuarioActual,
+} from '@/services';
 import type { Perfil } from '@/types';
 
-/** Secciones de la maqueta. Ninguna navega en la Entrega 1 (sección 4.4). */
 const SECCIONES: ItemMenu[] = [
   { id: 'datos', titulo: 'Mis datos', subtitulo: 'Información personal, contacto y dirección', icono: 'person-outline' },
   { id: 'motos', titulo: 'Mis motos', subtitulo: 'Gestioná tus vehículos', icono: 'bicycle-outline' },
@@ -27,20 +32,57 @@ const ROLES: Record<string, string> = {
   admin: 'Administrador',
 };
 
-/**
- * Pantalla de Perfil (RF-VIEW-005).
- * Muestra el usuario de ejemplo de `usuarios.json`; no hay sesión que consultar.
- */
 export default function PerfilScreen() {
   const router = useRouter();
   const { datos: usuario, cargando } = useRecurso<Perfil | null>(obtenerUsuarioActual, null);
+  const [avatarLocal, setAvatarLocal] = useState<string | null>(null);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
 
   const localidad = [usuario?.localidad, usuario?.provincia].filter(Boolean).join(', ');
+
+  async function cambiarFoto() {
+    if (subiendoFoto) return;
+
+    try {
+      const resultado = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      console.log('[FOTO] Resultado del selector:', {
+        canceled: resultado.canceled,
+        cantidad: resultado.assets?.length ?? 0,
+        uri: resultado.assets?.[0]?.uri,
+      });
+
+      if (resultado.canceled) return;
+
+      const imagen = resultado.assets[0];
+
+      if (!imagen) {
+        Alert.alert('Error', 'No se pudo obtener la imagen seleccionada.');
+        return;
+      }
+
+      setSubiendoFoto(true);
+      const url = await actualizarFotoPerfil(imagen.uri, imagen.mimeType);
+      setAvatarLocal(url);
+      Alert.alert('Foto actualizada', 'Tu foto de perfil se guardó correctamente.');
+    } catch (error) {
+      Alert.alert(
+        'No se pudo cambiar la foto',
+        error instanceof Error ? error.message : 'Intentá nuevamente.',
+      );
+    } finally {
+      setSubiendoFoto(false);
+    }
+  }
 
   return (
     <Pantalla>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-10">
-        {/* Encabezado con imagen de fondo */}
         <View className="overflow-hidden">
           <FondoMarca variante="montania" velo="suave" />
           <View className="px-4 pb-5 pt-2">
@@ -52,7 +94,8 @@ export default function PerfilScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Notificaciones"
                   hitSlop={8}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie">
+                  className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie"
+                >
                   <Ionicons name="notifications-outline" size={19} color="#FFFFFF" />
                   <View className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-peligro" />
                 </Pressable>
@@ -61,7 +104,8 @@ export default function PerfilScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Configuración"
                   hitSlop={8}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie">
+                  className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie"
+                >
                   <Ionicons name="settings-outline" size={19} color="#FFFFFF" />
                 </Pressable>
               </View>
@@ -73,15 +117,21 @@ export default function PerfilScreen() {
               <View className="flex-row items-center gap-4">
                 <View>
                   <View className="rounded-full border-2 border-acento p-0.5">
-                    <Avatar uri={usuario?.avatar_url} tamanio={84} />
+                    <Avatar uri={avatarLocal ?? usuario?.avatar_url} tamanio={84} />
                   </View>
-                  {/* Cambio de foto: control inerte (RF-PROF-002, E2) */}
                   <Pressable
                     testID="btn-cambiar-foto"
                     accessibilityRole="button"
                     accessibilityLabel="Cambiar foto de perfil"
-                    className="absolute -bottom-1 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-fondo bg-superficie-alta active:bg-superficie">
-                    <Ionicons name="camera" size={15} color="#FFFFFF" />
+                    disabled={subiendoFoto}
+                    onPress={cambiarFoto}
+                    className="absolute -bottom-1 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-fondo bg-superficie-alta active:bg-superficie"
+                  >
+                    {subiendoFoto ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Ionicons name="camera" size={15} color="#FFFFFF" />
+                    )}
                   </Pressable>
                 </View>
 
@@ -104,6 +154,7 @@ export default function PerfilScreen() {
                     variante="fantasma"
                     icono="create-outline"
                     className="mt-1 min-h-[40px] self-start px-4 py-2"
+                    onPress={() => router.push('/editar-perfil')}
                   />
                 </View>
               </View>
@@ -120,7 +171,6 @@ export default function PerfilScreen() {
             ))}
           </View>
 
-          {/* Cierra la sesión de Supabase y borra la guardada en el dispositivo (RF-AUTH-005) */}
           <Boton
             testID="btn-cerrar-sesion"
             titulo="Cerrar sesión"
@@ -130,7 +180,9 @@ export default function PerfilScreen() {
             onPress={() =>
               cerrarSesion()
                 .then(() => router.replace('/login'))
-                .catch((error: Error) => Alert.alert('No se pudo cerrar la sesión', error.message))
+                .catch((error: Error) =>
+                  Alert.alert('No se pudo cerrar la sesión', error.message),
+                )
             }
           />
         </View>
