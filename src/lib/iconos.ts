@@ -1,5 +1,6 @@
 import type { Ionicons } from '@expo/vector-icons';
 
+import type { NombreColor } from '@/lib/tema';
 import type { EstadoServicio } from '@/types';
 
 type NombreIcono = keyof typeof Ionicons.glyphMap;
@@ -29,19 +30,22 @@ type DescriptorEstado = {
   icono: NombreIcono;
   /** Clase de NativeWind del tema, nunca un color literal. */
   color: string;
+  /** Token del tema para los íconos, que no aceptan clases. */
+  tono: NombreColor;
 };
 
 const ESTADOS: Record<EstadoServicio, DescriptorEstado> = {
-  pendiente: { etiqueta: 'Esperando mecánico', icono: 'time-outline', color: 'text-acento' },
-  solicitado: { etiqueta: 'Solicitud enviada', icono: 'paper-plane-outline', color: 'text-acento' },
-  aceptado: { etiqueta: 'Mecánico asignado', icono: 'person-add-outline', color: 'text-acento' },
-  en_camino: { etiqueta: 'Mecánico en camino', icono: 'bicycle-outline', color: 'text-exito' },
-  llegue: { etiqueta: 'En el lugar', icono: 'flag-outline', color: 'text-exito' },
-  trabajando: { etiqueta: 'Trabajando', icono: 'build-outline', color: 'text-acento' },
-  finalizado: { etiqueta: 'Finalizado', icono: 'checkmark-circle-outline', color: 'text-exito' },
-  cancelada: { etiqueta: 'Cancelada', icono: 'close-circle-outline', color: 'text-peligro' },
+  pendiente: { etiqueta: 'Esperando mecánico', icono: 'time-outline', color: 'text-acento', tono: 'acento' },
+  solicitado: { etiqueta: 'Solicitud enviada', icono: 'paper-plane-outline', color: 'text-acento', tono: 'acento' },
+  aceptado: { etiqueta: 'Mecánico asignado', icono: 'person-add-outline', color: 'text-acento', tono: 'acento' },
+  en_camino: { etiqueta: 'Mecánico en camino', icono: 'bicycle-outline', color: 'text-exito', tono: 'exito' },
+  llegue: { etiqueta: 'En el lugar', icono: 'flag-outline', color: 'text-exito', tono: 'exito' },
+  trabajando: { etiqueta: 'Trabajando', icono: 'build-outline', color: 'text-acento', tono: 'acento' },
+  finalizado: { etiqueta: 'Finalizado', icono: 'checkmark-circle-outline', color: 'text-exito', tono: 'exito' },
+  cancelada: { etiqueta: 'Cancelada', icono: 'close-circle-outline', color: 'text-peligro', tono: 'peligro' },
 };
 
+/** Si la base trae un estado desconocido, se muestra como pendiente en vez de romper la vista. */
 export function descriptorEstado(estado: EstadoServicio): DescriptorEstado {
-  return ESTADOS[estado];
+  return ESTADOS[estado] ?? ESTADOS.pendiente;
 }

@@ -112,6 +112,20 @@ export interface Servicio {
   historial: HitoServicio[];
 }
 
+/** Datos mínimos del mecánico asignado, para la tarjeta del detalle. */
+export interface MecanicoAsignado {
+  id: string;
+  nombre: string;
+  localidad: string | null;
+  telefono: string | null;
+  imagen_url: string | null;
+}
+
+/** Solicitud con su mecánico asignado, para la pantalla de seguimiento. */
+export interface DetalleSolicitud extends Servicio {
+  mecanico: MecanicoAsignado | null;
+}
+
 /** Contenido editorial del Home. Sin tabla asociada: es contenido de la Entrega 1. */
 export interface Consejo {
   id: string;

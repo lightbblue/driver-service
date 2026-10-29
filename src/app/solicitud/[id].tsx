@@ -1,398 +1,254 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Alert, Linking, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+
+import { EstadoSolicitud } from '@/components/solicitud/estado-solicitud';
+import { LineaTiempo } from '@/components/solicitud/linea-tiempo';
 import {
-  useLocalSearchParams,
-  useRouter } from 'expo-router';
-import { useCallback,
-  useEffect,
-  useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+  Avatar,
+  Boton,
+  Cargando,
+  EncabezadoSeccion,
+  ListaVacia,
+  Pantalla,
+  Tarjeta,
+} from '@/components/ui';
+import { useRecurso } from '@/hooks/use-recurso';
+import { cn } from '@/lib/cn';
+import { formatearFechaHora } from '@/lib/formato';
+import { COLORES } from '@/lib/tema';
+import { cancelarSolicitud, esCancelable, esEstadoActivo, obtenerSolicitud } from '@/services';
+import type { DetalleSolicitud } from '@/types';
 
-import { supabase } from '@/lib/supabase';
-import { cancelarSolicitud } from '@/services/solicitudes';type Solicitud = {
-  id: string;
-  categoria_id: string | null;
-  descripcion: string | null;
-  direccion: string | null;
-  latitud: number | null;
-  longitud: number | null;
-  estado: string;
-  creado_en: string;
-  mecanico_id: string | null;
-};
-
-const estados: Record<string, string> = {
-  pendiente: 'Pendiente de asignación',
-  solicitado: 'Solicitud recibida',
-  aceptado: 'Aceptada por el mecánico',
-  en_camino: 'Mecánico en camino',
-  llegue: 'Mecánico en el lugar',
-  trabajando: 'Trabajo en curso',
-  finalizado: 'Servicio finalizado',
-  cancelada: 'Solicitud cancelada',
-};
-
-function fechaLegible(fecha: string) {
-  const valor = new Date(fecha);
-
-  if (Number.isNaN(valor.getTime())) {
-    return 'Fecha no disponible';
-  }
-
-  return valor.toLocaleString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
+/** Seguimiento de una solicitud (RF-VIEW-008). */
 export default function DetalleSolicitudScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  const [solicitud, setSolicitud] = useState<Solicitud | null>(null);
-  const [categoria, setCategoria] = useState('Asistencia mecánica');
-  const [cargando, setCargando] = useState(true);
-  const [errorMensaje, setErrorMensaje] = useState('');
-
+  const { datos: solicitud, cargando, error, recargar } = useRecurso<DetalleSolicitud | null>(
+    () => obtenerSolicitud(id ?? ''),
+    null,
+    [id],
+  );
   const [cancelando, setCancelando] = useState(false);
 
-  async function ejecutarCancelacion() {
-    if (!id || !solicitud || cancelando) return;
-
+  async function cancelar() {
+    if (!solicitud) return;
     setCancelando(true);
-    setErrorMensaje('');
-
     try {
-      await cancelarSolicitud(
-        id,
-        'Cancelación solicitada por el cliente',
-      );
-      await cargarDetalle();
-      Alert.alert(
-        'Solicitud cancelada',
-        'La solicitud se canceló correctamente.',
-      );
-    } catch (error) {
-      const mensaje =
-        error instanceof Error
-          ? error.message
-          : 'Ocurrió un error inesperado.';
-
-      setErrorMensaje(mensaje);
+      await cancelarSolicitud(solicitud.id);
+      recargar();
+    } catch (motivo) {
+      const mensaje = motivo instanceof Error ? motivo.message : 'Ocurrió un error inesperado.';
       Alert.alert('No se pudo cancelar', mensaje);
     } finally {
       setCancelando(false);
     }
   }
 
-  function manejarCancelacion() {
-    if (!id || !solicitud || cancelando) return;
-
-    // En navegador usamos la confirmación nativa del navegador.
-    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-      const confirmado = window.confirm(
-        '¿Querés cancelar esta solicitud?',
-      );
-
-      if (confirmado) {
-        void ejecutarCancelacion();
-      }
+  function confirmarCancelacion() {
+    const pregunta = '¿Querés cancelar esta solicitud?';
+    if (Platform.OS === 'web') {
+      if (window.confirm(pregunta)) void cancelar();
       return;
     }
-
-    Alert.alert(
-      'Cancelar solicitud',
-      '¿Querés cancelar esta solicitud?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Sí, cancelar',
-          style: 'destructive',
-          onPress: () => void ejecutarCancelacion(),
-        },
-      ],
-    );
+    Alert.alert('Cancelar solicitud', pregunta, [
+      { text: 'No', style: 'cancel' },
+      { text: 'Sí, cancelar', style: 'destructive', onPress: () => void cancelar() },
+    ]);
   }
 
-  const cargarDetalle = useCallback(async () => {
-    setCargando(true);
-    setErrorMensaje('');
-
-    try {
-      if (!id) {
-        throw new Error('No se indicó el identificador de la solicitud.');
-      }
-
-      const { data: authData, error: authError } =
-        await supabase.auth.getUser();
-
-      if (authError) throw authError;
-
-      if (!authData.user) {
-        throw new Error('Iniciá sesión para consultar esta solicitud.');
-      }
-
-      const { data, error } = await supabase
-        .from('solicitudes')
-        .select(
-          'id, categoria_id, descripcion, direccion, latitud, longitud, estado, creado_en, mecanico_id',
-        )
-        .eq('id', id)
-        .eq('usuario_id', authData.user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (!data) {
-        throw new Error(
-          'No encontramos esta solicitud o no tenés permiso para verla.',
-        );
-      }
-
-      setSolicitud(data as Solicitud);
-
-      if (data.categoria_id) {
-        const { data: categoriaData, error: categoriaError } =
-          await supabase
-            .from('categorias_averia')
-            .select('nombre')
-            .eq('id', data.categoria_id)
-            .maybeSingle();
-
-        if (!categoriaError && categoriaData?.nombre) {
-          setCategoria(categoriaData.nombre);
-        }
-      }
-    } catch (error) {
-      console.error('[DETALLE SOLICITUD] Error:', error);
-
-      setErrorMensaje(
-        error instanceof Error
-          ? error.message
-          : 'No se pudo cargar la solicitud.',
-      );
-    } finally {
-      setCargando(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    void cargarDetalle();
-  }, [cargarDetalle]);
-
   return (
-    <ScrollView contentContainerStyle={styles.pantalla}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.back()}
-        style={styles.botonVolver}
-      >
-        <Text style={styles.textoVolver}>‹ Volver a mis solicitudes</Text>
-      </Pressable>
+    <Pantalla>
+      <View className="flex-row items-center px-3 pb-2 pt-1">
+        <Pressable
+          testID="btn-volver"
+          accessibilityRole="button"
+          accessibilityLabel="Volver a mis solicitudes"
+          hitSlop={10}
+          onPress={() => router.back()}
+          className="h-10 w-10 items-center justify-center rounded-full active:bg-superficie">
+          <Ionicons name="chevron-back" size={24} color={COLORES.texto} />
+        </Pressable>
+        <Text className="flex-1 text-center text-lg font-bold text-texto">Detalle de solicitud</Text>
+        <View className="w-10" />
+      </View>
 
-      <Text style={styles.titulo}>Detalle de solicitud</Text>
-      <Text style={styles.subtitulo}>
-        Información registrada en Rider Service.
-      </Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="gap-5 px-4 pb-10 pt-2">
+        {cargando && !solicitud ? (
+          <Cargando mensaje="Cargando solicitud…" />
+        ) : error ? (
+          <View className="gap-2">
+            <ListaVacia titulo="No pudimos cargar la solicitud" detalle={error} icono="cloud-offline-outline" />
+            <Boton titulo="Reintentar" variante="secundario" icono="refresh" onPress={recargar} />
+          </View>
+        ) : !solicitud ? (
+          <ListaVacia
+            titulo="No encontramos esta solicitud"
+            detalle="Puede que haya sido eliminada o que no tengas permiso para verla."
+            icono="search-outline"
+          />
+        ) : (
+          <>
+            <Tarjeta className="gap-3 p-4">
+              <View className="gap-0.5">
+                <Text className="text-2xl font-extrabold text-texto">{solicitud.categoria_nombre}</Text>
+                <Text className="text-chico text-texto-tenue">
+                  #{solicitud.codigo} · {formatearFechaHora(solicitud.creado_en)}
+                </Text>
+              </View>
+              <EstadoSolicitud estado={solicitud.estado} grande />
+              {solicitud.eta_minutos && esEstadoActivo(solicitud.estado) ? (
+                <View className="flex-row items-center gap-1.5">
+                  <Ionicons name="time-outline" size={15} color={COLORES.acento} />
+                  <Text className="text-sm text-texto">
+                    Llegada estimada en <Text className="font-bold text-acento">{solicitud.eta_minutos} min</Text>
+                  </Text>
+                </View>
+              ) : null}
+            </Tarjeta>
 
-      {cargando ? (
-        <View style={styles.centro}>
-          <ActivityIndicator size="large" color="#2563eb" />
-          <Text style={styles.secundario}>Cargando solicitud...</Text>
-        </View>
-      ) : errorMensaje ? (
-        <View style={styles.tarjeta}>
-          <Text style={styles.error}>{errorMensaje}</Text>
+            <View>
+              <EncabezadoSeccion titulo="Seguimiento" />
+              <Tarjeta className="p-4">
+                <LineaTiempo
+                  estado={solicitud.estado}
+                  historial={solicitud.historial}
+                  creadoEn={solicitud.creado_en}
+                />
+              </Tarjeta>
+            </View>
 
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void cargarDetalle()}
-            style={styles.botonReintentar}
-          >
-            <Text style={styles.textoBoton}>Intentar nuevamente</Text>
-          </Pressable>
-        </View>
-      ) : solicitud ? (
-        <View style={styles.tarjeta}>
-          <Text style={styles.etiqueta}>Categoría</Text>
-          <Text style={styles.valor}>{categoria}</Text>
+            <View>
+              <EncabezadoSeccion titulo="Mecánico asignado" />
+              <TarjetaMecanicoAsignado solicitud={solicitud} />
+            </View>
 
-          <Text style={styles.etiqueta}>Estado actual</Text>
-          <Text style={styles.estado}>
-            {estados[solicitud.estado] ?? solicitud.estado}
-          </Text>
+            <View>
+              <EncabezadoSeccion titulo="Detalle" />
+              <Tarjeta className="gap-4 p-4">
+                <FilaDato icono="build-outline" titulo="Problema" valor={solicitud.categoria_nombre} />
+                <FilaDato icono="location-outline" titulo="Ubicación" valor={solicitud.ubicacion.direccion} />
+                <FilaDato
+                  icono="document-text-outline"
+                  titulo="Descripción"
+                  valor={solicitud.descripcion || 'Sin descripción'}
+                />
+              </Tarjeta>
+            </View>
 
-          <Text style={styles.etiqueta}>Fecha de creación</Text>
-          <Text style={styles.valor}>
-            {fechaLegible(solicitud.creado_en)}
-          </Text>
-
-          <Text style={styles.etiqueta}>Ubicación</Text>
-          <Text style={styles.valor}>
-            {solicitud.direccion || 'Sin dirección registrada'}
-          </Text>
-
-          {solicitud.latitud != null &&
-          solicitud.longitud != null ? (
-            <Text style={styles.coordenadas}>
-              Coordenadas: {solicitud.latitud}, {solicitud.longitud}
-            </Text>
-          ) : null}
-
-          <Text style={styles.etiqueta}>Descripción</Text>
-          <Text style={styles.valor}>
-            {solicitud.descripcion || 'Sin descripción adicional'}
-          </Text>
-
-          <Text style={styles.etiqueta}>Identificador</Text>
-          <Text selectable style={styles.identificador}>
-            {solicitud.id}
-          </Text>
-
-          <Text style={styles.nota}>
-            {solicitud.mecanico_id
-              ? 'La solicitud tiene un mecánico asociado.'
-              : 'Todavía no hay un mecánico asociado a esta solicitud.'}
-          </Text>
-
-          {!['cancelada', 'finalizado', 'suspendido'].includes(solicitud.estado) ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={cancelando}
-              onPress={() => void manejarCancelacion()}
-              style={styles.botonCancelar}
-            >
-              <Text style={styles.textoBotonCancelar}>
-                {cancelando ? 'Cancelando...' : 'Cancelar solicitud'}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
-    </ScrollView>
+            {esCancelable(solicitud.estado) ? (
+              <Boton
+                testID="btn-cancelar-solicitud"
+                titulo="Cancelar solicitud"
+                variante="peligro"
+                icono="close-circle-outline"
+                cargando={cancelando}
+                deshabilitado={cancelando}
+                onPress={confirmarCancelacion}
+              />
+            ) : null}
+          </>
+        )}
+      </ScrollView>
+    </Pantalla>
   );
 }
 
-const styles = StyleSheet.create({
-  botonCancelar: {
-    marginTop: 22,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    backgroundColor: '#dc2626',
-    alignItems: 'center',
-  },
-  textoBotonCancelar: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  pantalla: {
-    flexGrow: 1,
-    padding: 20,
-    paddingTop: 28,
-    backgroundColor: '#f5f7fb',
-  },
-  botonVolver: {
-    alignSelf: 'flex-start',
-    paddingVertical: 10,
-    marginBottom: 12,
-  },
-  textoVolver: {
-    color: '#2563eb',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  titulo: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  subtitulo: {
-    marginTop: 6,
-    marginBottom: 20,
-    color: '#6b7280',
-    fontSize: 14,
-  },
-  tarjeta: {
-    padding: 18,
-    borderRadius: 14,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  etiqueta: {
-    marginTop: 14,
-    marginBottom: 5,
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6b7280',
-  },
-  valor: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#111827',
-  },
-  estado: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#dbeafe',
-    color: '#1d4ed8',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  coordenadas: {
-    marginTop: 6,
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  identificador: {
-    fontSize: 12,
-    color: '#4b5563',
-  },
-  nota: {
-    marginTop: 20,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    color: '#4b5563',
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  centro: {
-    padding: 30,
-    alignItems: 'center',
-    gap: 12,
-  },
-  secundario: {
-    color: '#6b7280',
-  },
-  error: {
-    color: '#b91c1c',
-    lineHeight: 21,
-  },
-  botonReintentar: {
-    marginTop: 16,
-    alignSelf: 'flex-start',
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#dbeafe',
-  },
-  textoBoton: {
-    color: '#1d4ed8',
-    fontWeight: '700',
-  },
-});
+function TarjetaMecanicoAsignado({ solicitud }: { solicitud: DetalleSolicitud }) {
+  const { mecanico } = solicitud;
+
+  if (!mecanico) {
+    const mensaje =
+      solicitud.estado === 'cancelada'
+        ? 'La solicitud se canceló antes de asignar un mecánico.'
+        : 'Estamos buscando un mecánico disponible cerca tuyo.';
+    return (
+      <Tarjeta className="flex-row items-center gap-3 p-4">
+        <Ionicons name="search-outline" size={20} color={COLORES.textoTenue} />
+        <Text className="flex-1 text-chico text-texto-tenue">{mensaje}</Text>
+      </Tarjeta>
+    );
+  }
+
+  const telefono = mecanico.telefono?.replace(/[^\d+]/g, '') ?? '';
+  const abrir = (url: string) =>
+    Linking.openURL(url).catch(() =>
+      Alert.alert('No se pudo abrir', 'No encontramos una aplicación para completar esta acción.'),
+    );
+
+  return (
+    <Tarjeta className="gap-4 p-4">
+      <View className="flex-row items-center gap-3">
+        <Avatar uri={mecanico.imagen_url} tamanio={48} icono="construct" />
+        <View className="flex-1">
+          <Text className="text-base font-bold text-texto" numberOfLines={1}>
+            {mecanico.nombre}
+          </Text>
+          {mecanico.localidad ? (
+            <Text className="text-chico text-texto-tenue">{mecanico.localidad}</Text>
+          ) : null}
+        </View>
+      </View>
+      <View className="flex-row gap-2">
+        <BotonContacto icono="call-outline" etiqueta="Llamar" deshabilitado={!telefono} onPress={() => abrir(`tel:${telefono}`)} />
+        <BotonContacto icono="chatbubble-outline" etiqueta="Mensaje" deshabilitado={!telefono} onPress={() => abrir(`sms:${telefono}`)} />
+        <BotonContacto
+          icono="logo-whatsapp"
+          etiqueta="WhatsApp"
+          deshabilitado={!telefono}
+          onPress={() => abrir(`https://wa.me/${telefono.replace('+', '')}`)}
+        />
+      </View>
+    </Tarjeta>
+  );
+}
+
+function BotonContacto({
+  icono,
+  etiqueta,
+  deshabilitado,
+  onPress,
+}: {
+  icono: keyof typeof Ionicons.glyphMap;
+  etiqueta: string;
+  deshabilitado: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={etiqueta}
+      disabled={deshabilitado}
+      onPress={onPress}
+      className={cn(
+        'flex-1 items-center gap-1 rounded-campo border border-borde bg-superficie-alta py-3 active:opacity-70',
+        deshabilitado && 'opacity-40',
+      )}>
+      <Ionicons name={icono} size={19} color={COLORES.acento} />
+      <Text className="text-mini font-semibold text-texto">{etiqueta}</Text>
+    </Pressable>
+  );
+}
+
+function FilaDato({
+  icono,
+  titulo,
+  valor,
+}: {
+  icono: keyof typeof Ionicons.glyphMap;
+  titulo: string;
+  valor: string;
+}) {
+  return (
+    <View className="flex-row gap-3">
+      <Ionicons name={icono} size={19} color={COLORES.textoTenue} />
+      <View className="flex-1">
+        <Text className="text-mini font-bold uppercase tracking-wide text-texto-tenue">{titulo}</Text>
+        <Text className="text-sm text-texto">{valor}</Text>
+      </View>
+    </View>
+  );
+}

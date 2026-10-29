@@ -3,13 +3,14 @@ import { useCallback, useEffect, useState } from 'react';
 type Recurso<T> = {
   datos: T;
   cargando: boolean;
+  /** Mensaje del último error de carga, o null si salió bien. */
+  error: string | null;
   recargar: () => void;
 };
 
 /**
- * Consume una función de `/services` exponiendo el estado de carga (RNF-UX-003).
- * Es el único puente entre las vistas y la capa de datos: ninguna vista importa
- * un JSON ni conoce su origen (RF-VIEW-012).
+ * Consume una función de `/services` exponiendo el estado de carga y de error (RNF-UX-003).
+ * Es el único puente entre las vistas y la capa de datos: ninguna vista conoce el origen.
  */
 export function useRecurso<T>(
   cargar: () => Promise<T>,
@@ -18,9 +19,11 @@ export function useRecurso<T>(
 ): Recurso<T> {
   const [datos, setDatos] = useState<T>(valorInicial);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // eslint-disable-next-line react-hooks/use-memo
-const ejecutar = useCallback(cargar, dependencias);
+  // Las dependencias las define quien llama, igual que en useEffect.
+  // eslint-disable-next-line react-hooks/use-memo, react-hooks/exhaustive-deps
+  const ejecutar = useCallback(cargar, dependencias);
 
   const recargar = useCallback(() => {
     let vigente = true;
@@ -28,11 +31,14 @@ const ejecutar = useCallback(cargar, dependencias);
 
     ejecutar()
       .then((resultado) => {
-        if (vigente) setDatos(resultado);
+        if (!vigente) return;
+        setDatos(resultado);
+        setError(null);
       })
-      .catch((error) => {
-  console.error('Error al cargar recurso:', error);
-  if (vigente) setDatos(valorInicial);
+      .catch((motivo: unknown) => {
+        if (!vigente) return;
+        setDatos(valorInicial);
+        setError(motivo instanceof Error ? motivo.message : 'No se pudieron cargar los datos.');
       })
       .finally(() => {
         if (vigente) setCargando(false);
@@ -45,7 +51,7 @@ const ejecutar = useCallback(cargar, dependencias);
   }, [ejecutar]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-useEffect(() => recargar(), [recargar]);
+  useEffect(() => recargar(), [recargar]);
 
-  return { datos, cargando, recargar };
+  return { datos, cargando, error, recargar };
 }
