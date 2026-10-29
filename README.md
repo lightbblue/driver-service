@@ -67,8 +67,11 @@ Requiere Node.js 20 o superior.
 
 ```bash
 npm install
-npm start
+cp .env.example .env   # en Windows (PowerShell): Copy-Item .env.example .env
+npx expo start -c
 ```
+
+El archivo `.env` trae la URL del proyecto de Supabase y su clave **publicable**, pensada para viajar dentro de la app. Los datos los protegen las políticas RLS de la base. Si cambian las variables, hay que reiniciar Expo con `-c` para que las tome.
 
 Después, desde la terminal de Expo:
 
