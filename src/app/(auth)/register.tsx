@@ -1,16 +1,7 @@
-
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   Boton,
@@ -22,9 +13,11 @@ import {
   LogoRider,
   Pantalla,
   SeparadorO,
+  SubirImagenes,
   type OpcionConmutador,
 } from '@/components/ui';
-import { supabase } from '@/lib/supabase';
+import { COLORES } from '@/lib/tema';
+import { registrarCuenta } from '@/services';
 
 type Variante = 'usuario' | 'mecanico';
 
@@ -33,6 +26,20 @@ const OPCIONES: OpcionConmutador<Variante>[] = [
   { valor: 'mecanico', etiqueta: 'Mecánico', icono: 'construct-outline' },
 ];
 
+const TEXTOS: Record<Variante, { titulo: string; bajada: string; boton: string }> = {
+  usuario: {
+    titulo: 'Creá tu cuenta',
+    bajada: 'Unite a Rider Service y formá parte de nuestra comunidad.',
+    boton: 'Crear cuenta',
+  },
+  mecanico: {
+    titulo: 'Sumate como mecánico',
+    bajada: 'Ofrecé tu servicio, ayudá en el camino y sé parte de la comunidad Rider Service.',
+    boton: 'Crear cuenta como mecánico',
+  },
+};
+
+/** Registro de cuenta con sus dos variantes, Usuario y Mecánico (RF-VIEW-003, RF-AUTH-003/004). */
 export default function RegisterScreen() {
   const router = useRouter();
 
@@ -45,86 +52,75 @@ export default function RegisterScreen() {
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [cargando, setCargando] = useState(false);
 
+  // Campos propios del mecánico
+  const [taller, setTaller] = useState('');
+  const [ubicacionTaller, setUbicacionTaller] = useState('');
+  const [especialidades, setEspecialidades] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+
   const esMecanico = variante === 'mecanico';
+  const textos = TEXTOS[variante];
+
+  function validar(): string | null {
+    if (!nombre.trim() || !email.trim() || !telefono.trim() || !password || !confirmacion) {
+      return 'Completá todos los campos obligatorios para continuar.';
+    }
+    if (esMecanico && !ubicacionTaller.trim()) {
+      return 'Indicá la ubicación de tu taller para que los clientes puedan encontrarte.';
+    }
+    if (password.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres.';
+    }
+    if (password !== confirmacion) {
+      return 'Las contraseñas no coinciden.';
+    }
+    if (!aceptaTerminos) {
+      return 'Tenés que aceptar los términos y condiciones para continuar.';
+    }
+    return null;
+  }
 
   async function registrar() {
-    if (esMecanico) {
-      Alert.alert(
-        'Registro de mecánicos',
-        'El registro de mecánicos todavía no está habilitado. Por ahora podés crear una cuenta de usuario.'
-      );
-      return;
-    }
-
-    const correo = email.trim().toLowerCase();
-
-    if (!nombre.trim() || !correo || !telefono.trim() || !password || !confirmacion) {
-      Alert.alert('Faltan datos', 'Completá todos los campos para continuar.');
-      return;
-    }
-
-    if (!aceptaTerminos) {
-      Alert.alert(
-        'Términos y condiciones',
-        'Tenés que aceptar los términos y condiciones para continuar.'
-      );
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Contraseña inválida', 'La contraseña debe tener al menos 6 caracteres.');
-      return;
-    }
-
-    if (password !== confirmacion) {
-      Alert.alert('Las contraseñas no coinciden', 'Revisá ambas contraseñas e intentá nuevamente.');
+    const problema = validar();
+    if (problema) {
+      Alert.alert('Revisá los datos', problema);
       return;
     }
 
     setCargando(true);
-
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: correo,
+      const { requiereConfirmacion } = await registrarCuenta({
+        nombre,
+        email,
+        telefono,
         password,
-        options: {
-          data: {
-            nombre: nombre.trim(),
-            telefono: telefono.trim(),
-          },
-        },
+        rol: esMecanico ? 'mecanico' : 'cliente',
+        taller: esMecanico
+          ? {
+              nombre: taller,
+              ubicacion: ubicacionTaller,
+              especialidades: especialidades
+                .split(',')
+                .map((e) => e.trim())
+                .filter(Boolean),
+              descripcion,
+            }
+          : undefined,
       });
 
-      if (error) {
-        Alert.alert('No se pudo crear la cuenta', error.message);
-        return;
-      }
-
-      if (!data.session) {
-        router.replace('/login');
-        setTimeout(() => {
-          Alert.alert(
-            '¡Registro exitoso!',
-            'Tu cuenta fue creada. Revisá tu correo para confirmar la cuenta y después iniciá sesión.'
-          );
-        }, 300);
-        return;
-      }
-
-      const { error: logoutError } = await supabase.auth.signOut();
-
-      if (logoutError) {
-        Alert.alert(
-          'Cuenta creada',
-          'Tu cuenta se creó, pero no pudimos cerrar la sesión automáticamente. Podés continuar desde el inicio de sesión.'
-        );
-      }
-
       router.replace('/login');
-    } catch {
+      setTimeout(() => {
+        Alert.alert(
+          '¡Cuenta creada!',
+          requiereConfirmacion
+            ? 'Revisá tu correo para confirmar la cuenta y después iniciá sesión.'
+            : 'Ya podés iniciar sesión con tu correo y contraseña.',
+        );
+      }, 300);
+    } catch (motivo) {
       Alert.alert(
-        'Error de conexión',
-        'No pudimos conectarnos con el servidor. Revisá tu conexión a internet e intentá nuevamente.'
+        'No se pudo crear la cuenta',
+        motivo instanceof Error ? motivo.message : 'Revisá tu conexión e intentá nuevamente.',
       );
     } finally {
       setCargando(false);
@@ -133,53 +129,42 @@ export default function RegisterScreen() {
 
   return (
     <Pantalla bordes={['top', 'bottom']}>
-      <FondoMarca variante="montania" />
+      <FondoMarca variante={esMecanico ? 'taller' : 'montania'} />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Fijo fuera del scroll: siempre se puede volver, sin importar el formulario. */}
+      <View className="flex-row items-center px-6 pb-1 pt-2">
+        <Pressable
+          testID="btn-volver"
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          hitSlop={10}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/login'))}
+          className="h-10 w-10 items-center justify-center rounded-full active:bg-superficie">
+          <Ionicons name="chevron-back" size={24} color={COLORES.texto} />
+        </Pressable>
+        <Text className="flex-1 text-center text-lg font-bold text-texto">Registro</Text>
+        <View className="w-10" />
+      </View>
+
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentContainerClassName="gap-5 px-6 pb-10 pt-2">
-          <View className="flex-row items-center">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Volver"
-              hitSlop={10}
-              onPress={() => router.back()}
-              className="h-10 w-10 items-center justify-center rounded-full active:bg-superficie">
-              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-            </Pressable>
-
-            <Text className="flex-1 text-center text-lg font-bold text-texto">
-              Registro
-            </Text>
-
-            <View className="w-10" />
-          </View>
-
           <View className="items-center">
             <LogoRider tamanio="mediano" />
           </View>
 
           <View className="gap-1">
-            <Text className="text-center text-3xl font-extrabold text-texto">
-              Creá tu cuenta
-            </Text>
-            <Text className="text-center text-sm text-texto-tenue">
-              Unite a Rider Service y formá parte de nuestra comunidad.
-            </Text>
+            <Text className="text-center text-3xl font-extrabold text-texto">{textos.titulo}</Text>
+            <Text className="text-center text-sm text-texto-tenue">{textos.bajada}</Text>
           </View>
 
-          <Conmutador
-            opciones={OPCIONES}
-            valor={variante}
-            onCambio={setVariante}
-          />
+          <Conmutador opciones={OPCIONES} valor={variante} onCambio={setVariante} />
 
           <View className="gap-4">
             <CampoTexto
+              testID="campo-nombre"
               etiqueta="Nombre completo"
               icono="person-outline"
               placeholder="Tu nombre y apellido"
@@ -187,8 +172,8 @@ export default function RegisterScreen() {
               value={nombre}
               onChangeText={setNombre}
             />
-
             <CampoTexto
+              testID="campo-email"
               etiqueta="Correo electrónico"
               icono="mail-outline"
               placeholder="ejemplo@correo.com"
@@ -198,8 +183,8 @@ export default function RegisterScreen() {
               value={email}
               onChangeText={setEmail}
             />
-
             <CampoTexto
+              testID="campo-telefono"
               etiqueta="Número de teléfono"
               icono="call-outline"
               placeholder="+54 11 1234 5678"
@@ -208,7 +193,47 @@ export default function RegisterScreen() {
               onChangeText={setTelefono}
             />
 
+            {esMecanico ? (
+              <>
+                <CampoTexto
+                  testID="campo-taller"
+                  etiqueta="Nombre del taller (opcional)"
+                  icono="storefront-outline"
+                  placeholder="Nombre de tu taller"
+                  value={taller}
+                  onChangeText={setTaller}
+                />
+                <CampoTexto
+                  testID="campo-ubicacion-taller"
+                  etiqueta="Ubicación del taller"
+                  icono="location-outline"
+                  placeholder="Dirección o localidad"
+                  value={ubicacionTaller}
+                  onChangeText={setUbicacionTaller}
+                />
+                <CampoTexto
+                  testID="campo-especialidades"
+                  etiqueta="Especialidades"
+                  icono="build-outline"
+                  placeholder="Ej: Motos, eléctricos, emergencias"
+                  value={especialidades}
+                  onChangeText={setEspecialidades}
+                />
+                <CampoTexto
+                  testID="campo-descripcion"
+                  etiqueta="Descripción (opcional)"
+                  icono="document-text-outline"
+                  placeholder="Contanos sobre tus servicios…"
+                  multiline
+                  value={descripcion}
+                  onChangeText={setDescripcion}
+                />
+                <SubirImagenes />
+              </>
+            ) : null}
+
             <CampoTexto
+              testID="campo-password"
               etiqueta="Contraseña"
               icono="lock-closed-outline"
               placeholder="Mínimo 6 caracteres"
@@ -217,8 +242,8 @@ export default function RegisterScreen() {
               value={password}
               onChangeText={setPassword}
             />
-
             <CampoTexto
+              testID="campo-password-confirmacion"
               etiqueta="Confirmar contraseña"
               icono="lock-closed-outline"
               placeholder="Repetí tu contraseña"
@@ -229,47 +254,35 @@ export default function RegisterScreen() {
             />
           </View>
 
-          
-<Casilla
-  accessibilityLabel="Acepto los términos y condiciones"
-  checked={aceptaTerminos}
-  onChange={setAceptaTerminos}
->
-  <Text className="text-chico leading-[17px] text-texto-tenue">
-    Acepto los{' '}
-    <Text className="font-bold text-acento">Términos y Condiciones</Text>
-    {' '}y la{' '}
-    <Text className="font-bold text-acento">Política de Privacidad</Text>
-  </Text>
-</Casilla>
+          <Casilla
+            testID="casilla-terminos"
+            accessibilityLabel="Acepto los términos y condiciones"
+            checked={aceptaTerminos}
+            onChange={setAceptaTerminos}>
+            <Text className="text-chico leading-[17px] text-texto-tenue">
+              Acepto los <Text className="font-bold text-acento">Términos y Condiciones</Text> y la{' '}
+              <Text className="font-bold text-acento">Política de Privacidad</Text>
+            </Text>
+          </Casilla>
 
           <View className="gap-4">
             <Boton
-              titulo="Crear cuenta"
+              testID="btn-crear-cuenta"
+              titulo={textos.boton}
               iconoDerecha="arrow-forward"
               onPress={registrar}
               cargando={cargando}
               deshabilitado={cargando}
             />
-
             <SeparadorO />
-
             <BotonGoogle />
           </View>
 
           <View className="flex-row items-center justify-center gap-1">
-            <Text className="text-sm text-texto-tenue">
-              ¿Ya tenés una cuenta?
-            </Text>
-
+            <Text className="text-sm text-texto-tenue">¿Ya tenés una cuenta?</Text>
             <Link href="/login" asChild>
-              <Pressable
-                accessibilityRole="link"
-                hitSlop={8}
-                className="active:opacity-60">
-                <Text className="text-sm font-bold text-acento">
-                  Iniciar sesión
-                </Text>
+              <Pressable testID="link-login" accessibilityRole="link" hitSlop={8} className="active:opacity-60">
+                <Text className="text-sm font-bold text-acento">Iniciar sesión</Text>
               </Pressable>
             </Link>
           </View>

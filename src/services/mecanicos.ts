@@ -11,18 +11,18 @@ type MecanicoDB = {
   longitud: number | null;
   disponible: boolean;
   imagen_url: string | null;
+  especialidades: string[] | null;
 };
 
 async function consultarMecanicos(): Promise<Mecanico[]> {
   const { data, error } = await supabase
     .from('mecanicos')
     .select(
-      'id, nombre, descripcion, telefono, localidad, latitud, longitud, disponible, imagen_url',
+      'id, nombre, descripcion, telefono, localidad, latitud, longitud, disponible, imagen_url, especialidades',
     )
     .order('nombre');
 
   if (error) {
-    console.error('[MECANICOS] Error al consultar Supabase:', error);
     throw new Error(
       `No se pudieron cargar los mecánicos: ${error.message}`,
     );
@@ -45,7 +45,7 @@ async function consultarMecanicos(): Promise<Mecanico[]> {
     calificacion_promedio: null,
     cantidad_calificaciones: 0,
     servicios_completados: 0,
-    especialidades: [],
+    especialidades: mecanico.especialidades ?? [],
     distancia_km: null,
     abierto_ahora: false,
   }));
