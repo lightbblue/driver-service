@@ -1,27 +1,79 @@
-import datos from '@/data/mecanicos.json';
+import { supabase } from '@/lib/supabase';
 import type { Mecanico } from '@/types';
 
-import { leer } from './cliente-local';
+type MecanicoDB = {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  telefono: string | null;
+  localidad: string | null;
+  latitud: number | null;
+  longitud: number | null;
+  disponible: boolean;
+  imagen_url: string | null;
+  especialidades: string[] | null;
+};
 
-const MECANICOS = datos as Mecanico[];
+async function consultarMecanicos(): Promise<Mecanico[]> {
+  const { data, error } = await supabase
+    .from('mecanicos')
+    .select(
+      'id, nombre, descripcion, telefono, localidad, latitud, longitud, disponible, imagen_url, especialidades',
+    )
+    .order('nombre');
 
-/** Listado completo, ordenado por distancia (en E2 lo hace `mecanicos_cercanos()`). */
+  if (error) {
+    throw new Error(
+      `No se pudieron cargar los mecánicos: ${error.message}`,
+    );
+  }
+
+  return ((data ?? []) as MecanicoDB[]).map((mecanico) => ({
+    id: mecanico.id,
+    perfil_id: '',
+    nombre_taller: mecanico.nombre,
+    descripcion: mecanico.descripcion,
+    logo_url: mecanico.imagen_url,
+    direccion_taller: mecanico.localidad ?? '',
+    localidad: mecanico.localidad ?? 'Localidad no indicada',
+    latitud: mecanico.latitud ?? 0,
+    longitud: mecanico.longitud ?? 0,
+    radio_cobertura_km: 0,
+    atiende_a_domicilio: false,
+    disponible: mecanico.disponible,
+    verificado: false,
+    calificacion_promedio: null,
+    cantidad_calificaciones: 0,
+    servicios_completados: 0,
+    especialidades: mecanico.especialidades ?? [],
+    distancia_km: null,
+    abierto_ahora: false,
+  }));
+}
+
+/** Consulta los mecánicos registrados en Supabase. */
 export async function listarMecanicos(): Promise<Mecanico[]> {
-  const ordenados = [...MECANICOS].sort(
-    (a, b) => (a.distancia_km ?? Infinity) - (b.distancia_km ?? Infinity),
-  );
-  return leer(ordenados);
+  return consultarMecanicos();
 }
 
-/** Mecánicos destacados del Home: disponibles y mejor calificados. */
-export async function listarMecanicosDestacados(limite = 6): Promise<Mecanico[]> {
-  const destacados = MECANICOS.filter((m) => m.disponible)
-    .sort((a, b) => (b.calificacion_promedio ?? 0) - (a.calificacion_promedio ?? 0))
+/** Devuelve los mecánicos disponibles para el inicio. */
+export async function listarMecanicosDestacados(
+  limite = 6,
+): Promise<Mecanico[]> {
+  const mecanicos = await consultarMecanicos();
+
+  return mecanicos
+    .filter((mecanico) => mecanico.disponible)
     .slice(0, limite);
-  return leer(destacados);
 }
 
-export async function obtenerMecanico(id: string | null): Promise<Mecanico | null> {
-  if (!id) return leer(null);
-  return leer(MECANICOS.find((m) => m.id === id) ?? null);
+/** Busca un mecánico por su identificador real de Supabase. */
+export async function obtenerMecanico(
+  id: string | null,
+): Promise<Mecanico | null> {
+  if (!id) return null;
+
+  const mecanicos = await consultarMecanicos();
+
+  return mecanicos.find((mecanico) => mecanico.id === id) ?? null;
 }

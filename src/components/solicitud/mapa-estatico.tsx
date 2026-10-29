@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Text, View } from 'react-native';
+import type { UbicacionServicio } from '@/types';
 
 /**
  * Representación visual de la ubicación.
@@ -9,7 +10,9 @@ import { Text, View } from 'react-native';
  * la integración del mapa nativo no entre en el sprint. El acceso real al GPS
  * es Entrega 3 (RF-ASSIST-003).
  */
-export function MapaEstatico({ etiqueta = 'Tu ubicación actual' }: { etiqueta?: string }) {
+type MapaEstaticoProps = { etiqueta?: string; ubicacion: UbicacionServicio | null; onMover: (latitud: number, longitud: number) => void };
+
+export function MapaEstatico({ etiqueta = 'Tu ubicación actual', ubicacion }: MapaEstaticoProps) {
   return (
     <View className="h-[168px] overflow-hidden rounded-tarjeta border border-borde bg-superficie-alta">
       <Image

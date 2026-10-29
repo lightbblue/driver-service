@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { FilaEstadisticas } from '@/components/perfil/fila-estadisticas';
 import { FilaMenu, type ItemMenu } from '@/components/perfil/fila-menu';
 import { Avatar, Boton, Cargando, FondoMarca, LogoRider, Pantalla } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
 import { obtenerUsuarioActual } from '@/services';
+import { supabase } from '@/lib/supabase';
 import type { Perfil } from '@/types';
 
 /** Secciones de la maqueta. Ninguna navega en la Entrega 1 (sección 4.4). */
@@ -33,6 +34,24 @@ const ROLES: Record<string, string> = {
  */
 export default function PerfilScreen() {
   const router = useRouter();
+
+  async function cerrarSesion() {
+    try {
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        throw error;
+      }
+
+      router.replace('/login');
+    } catch (error) {
+      console.error('[PERFIL] Error al cerrar sesión:', error);
+      Alert.alert(
+        'No se pudo cerrar la sesión',
+        'Intentá nuevamente.'
+      );
+    }
+  }
   const { datos: usuario, cargando } = useRecurso<Perfil | null>(obtenerUsuarioActual, null);
 
   const localidad = [usuario?.localidad, usuario?.provincia].filter(Boolean).join(', ');
@@ -120,14 +139,14 @@ export default function PerfilScreen() {
             ))}
           </View>
 
-          {/* Navega al login sin limpiar estado: no hay sesión que cerrar (RF-AUTH-005, E2) */}
+          {/* Cierra la sesión real de Supabase. */}
           <Boton
             testID="btn-cerrar-sesion"
             titulo="Cerrar sesión"
             variante="peligro"
             icono="log-out-outline"
             className="mt-2"
-            onPress={() => router.replace('/login')}
+            onPress={cerrarSesion}
           />
         </View>
       </ScrollView>

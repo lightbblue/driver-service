@@ -1,17 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Alert, Text, View } from 'react-native';
 
 import { Boton, Pantalla } from '@/components/ui';
 
 /**
  * Cierre del flujo de solicitud (RF-VIEW-006, paso 4).
  *
- * No muestra identificador de solicitud a propósito: generarlo implicaría
- * registrar la solicitud, que es Entrega 2 (RF-ASSIST-005).
+ * Confirma el registro y permite consultar el detalle de la solicitud.
  */
 export default function SolicitudConfirmadaScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+
 
   return (
     <Pantalla bordes={['top', 'bottom']}>
@@ -30,7 +31,7 @@ export default function SolicitudConfirmadaScreen() {
 
         <View className="mt-2 rounded-full border border-borde bg-superficie px-3 py-1.5">
           <Text className="text-mini font-semibold text-acento">
-            Asignación real: RF-MATCH-001 · Entrega 2
+            Solicitud registrada
           </Text>
         </View>
       </View>
@@ -38,9 +39,22 @@ export default function SolicitudConfirmadaScreen() {
       <View className="px-6 pb-6">
         <Boton
           testID="btn-volver-inicio"
-          titulo="Volver al Inicio"
+          titulo="Ver mi solicitud"
           icono="home-outline"
-          onPress={() => router.replace('/inicio')}
+          onPress={() => {
+            if (typeof id === 'string' && id.length > 0) {
+              router.replace({
+                pathname: '/solicitud/[id]',
+                params: { id },
+              });
+            } else {
+              Alert.alert(
+                'Solicitud recibida',
+                'Podés consultar tus solicitudes desde la sección Mis solicitudes.',
+                [{ text: 'Continuar', onPress: () => router.replace('/inicio') }],
+              );
+            }
+          }}
         />
       </View>
     </Pantalla>

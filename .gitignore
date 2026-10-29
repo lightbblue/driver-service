@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+graphify-out/
 
 # Expo
 .expo/
@@ -47,3 +48,9 @@ example
 .vscode/
 CLAUDE.md
 AGENTS.md
+
+# Skills de agentes de IA instaladas localmente (npx skills add)
+.agents/
+skills-lock.json
+# Configuración local de MCP para Claude Code
+.mcp.json

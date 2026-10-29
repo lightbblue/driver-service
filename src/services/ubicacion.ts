@@ -1,13 +1,55 @@
-import datos from '@/data/ubicacion.json';
+
+import * as Location from 'expo-location';
 import type { UbicacionServicio } from '@/types';
 
-import { leer } from './cliente-local';
-
-/**
- * Ubicación de ejemplo del flujo de solicitud.
- * En E3 la reemplaza la lectura real del GPS con `expo-location` (RF-ASSIST-003),
- * y esta misma función sigue siendo la que consume la vista.
- */
 export async function obtenerUbicacionActual(): Promise<UbicacionServicio> {
-  return leer(datos as UbicacionServicio);
+  const { status } = await Location.requestForegroundPermissionsAsync();
+
+  if (status !== 'granted') {
+    throw new Error(
+      'Necesitamos permiso para acceder a tu ubicación. Habilitalo en el navegador o en la configuración del celular.',
+    );
+  }
+
+  const posicion = await Location.getCurrentPositionAsync({
+    accuracy: Location.Accuracy.Balanced,
+  });
+
+  const { latitude, longitude } = posicion.coords;
+
+  let direccion = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+  let localidad: string | null = null;
+
+  try {
+    const resultados = await Location.reverseGeocodeAsync({
+      latitude,
+      longitude,
+    });
+
+    if (resultados.length > 0) {
+      const lugar = resultados[0];
+      localidad = lugar.city ?? lugar.subregion ?? null;
+
+      direccion = [
+        lugar.street,
+        lugar.streetNumber,
+        lugar.name,
+        lugar.city,
+        lugar.region,
+      ]
+        .filter(Boolean)
+        .filter((valor, indice, lista) => lista.indexOf(valor) === indice)
+        .join(', ') || direccion;
+    }
+  } catch {
+    // Si no se encuentra la dirección, conservamos las coordenadas reales.
+  }
+
+  return {
+    latitud: latitude,
+    longitud: longitude,
+    direccion,
+    localidad,
+    referencia: null,
+  };
 }

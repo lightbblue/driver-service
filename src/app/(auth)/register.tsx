@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   Boton,
@@ -16,6 +16,8 @@ import {
   SubirImagenes,
   type OpcionConmutador,
 } from '@/components/ui';
+import { COLORES } from '@/lib/tema';
+import { registrarCuenta } from '@/services';
 
 type Variante = 'usuario' | 'mecanico';
 
@@ -37,44 +39,118 @@ const TEXTOS: Record<Variante, { titulo: string; bajada: string; boton: string }
   },
 };
 
-/**
- * Pantalla de registro con sus dos variantes (RF-VIEW-003).
- *
- * Fuera de alcance por decisión documentada: validación de campos obligatorios,
- * coincidencia de contraseñas, bloqueo del botón sin aceptar los términos,
- * alta de cuenta y carga de imágenes (RF-AUTH-003/004, E2).
- */
+/** Registro de cuenta con sus dos variantes, Usuario y Mecánico (RF-VIEW-003, RF-AUTH-003/004). */
 export default function RegisterScreen() {
   const router = useRouter();
+
   const [variante, setVariante] = useState<Variante>('usuario');
+  const [nombre, setNombre] = useState('');
+  const [email, setEmail] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmacion, setConfirmacion] = useState('');
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [cargando, setCargando] = useState(false);
+
+  // Campos propios del mecánico
+  const [taller, setTaller] = useState('');
+  const [ubicacionTaller, setUbicacionTaller] = useState('');
+  const [especialidades, setEspecialidades] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+
   const esMecanico = variante === 'mecanico';
   const textos = TEXTOS[variante];
+
+  function validar(): string | null {
+    if (!nombre.trim() || !email.trim() || !telefono.trim() || !password || !confirmacion) {
+      return 'Completá todos los campos obligatorios para continuar.';
+    }
+    if (esMecanico && !ubicacionTaller.trim()) {
+      return 'Indicá la ubicación de tu taller para que los clientes puedan encontrarte.';
+    }
+    if (password.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres.';
+    }
+    if (password !== confirmacion) {
+      return 'Las contraseñas no coinciden.';
+    }
+    if (!aceptaTerminos) {
+      return 'Tenés que aceptar los términos y condiciones para continuar.';
+    }
+    return null;
+  }
+
+  async function registrar() {
+    const problema = validar();
+    if (problema) {
+      Alert.alert('Revisá los datos', problema);
+      return;
+    }
+
+    setCargando(true);
+    try {
+      const { requiereConfirmacion } = await registrarCuenta({
+        nombre,
+        email,
+        telefono,
+        password,
+        rol: esMecanico ? 'mecanico' : 'cliente',
+        taller: esMecanico
+          ? {
+              nombre: taller,
+              ubicacion: ubicacionTaller,
+              especialidades: especialidades
+                .split(',')
+                .map((e) => e.trim())
+                .filter(Boolean),
+              descripcion,
+            }
+          : undefined,
+      });
+
+      router.replace('/login');
+      setTimeout(() => {
+        Alert.alert(
+          '¡Cuenta creada!',
+          requiereConfirmacion
+            ? 'Revisá tu correo para confirmar la cuenta y después iniciá sesión.'
+            : 'Ya podés iniciar sesión con tu correo y contraseña.',
+        );
+      }, 300);
+    } catch (motivo) {
+      Alert.alert(
+        'No se pudo crear la cuenta',
+        motivo instanceof Error ? motivo.message : 'Revisá tu conexión e intentá nuevamente.',
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
 
   return (
     <Pantalla bordes={['top', 'bottom']}>
       <FondoMarca variante={esMecanico ? 'taller' : 'montania'} />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Fijo fuera del scroll: siempre se puede volver, sin importar el formulario. */}
+      <View className="flex-row items-center px-6 pb-1 pt-2">
+        <Pressable
+          testID="btn-volver"
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          hitSlop={10}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/login'))}
+          className="h-10 w-10 items-center justify-center rounded-full active:bg-superficie">
+          <Ionicons name="chevron-back" size={24} color={COLORES.texto} />
+        </Pressable>
+        <Text className="flex-1 text-center text-lg font-bold text-texto">Registro</Text>
+        <View className="w-10" />
+      </View>
+
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentContainerClassName="gap-5 px-6 pb-10 pt-2">
-          <View className="flex-row items-center">
-            <Pressable
-              testID="btn-volver"
-              accessibilityRole="button"
-              accessibilityLabel="Volver"
-              hitSlop={10}
-              onPress={() => router.back()}
-              className="h-10 w-10 items-center justify-center rounded-full active:bg-superficie">
-              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-            </Pressable>
-            <Text className="flex-1 text-center text-lg font-bold text-texto">Registro</Text>
-            <View className="w-10" />
-          </View>
-
           <View className="items-center">
             <LogoRider tamanio="mediano" />
           </View>
@@ -93,6 +169,8 @@ export default function RegisterScreen() {
               icono="person-outline"
               placeholder="Tu nombre y apellido"
               autoComplete="name"
+              value={nombre}
+              onChangeText={setNombre}
             />
             <CampoTexto
               testID="campo-email"
@@ -102,6 +180,8 @@ export default function RegisterScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+              value={email}
+              onChangeText={setEmail}
             />
             <CampoTexto
               testID="campo-telefono"
@@ -109,6 +189,8 @@ export default function RegisterScreen() {
               icono="call-outline"
               placeholder="+54 11 1234 5678"
               keyboardType="phone-pad"
+              value={telefono}
+              onChangeText={setTelefono}
             />
 
             {esMecanico ? (
@@ -118,18 +200,24 @@ export default function RegisterScreen() {
                   etiqueta="Nombre del taller (opcional)"
                   icono="storefront-outline"
                   placeholder="Nombre de tu taller"
+                  value={taller}
+                  onChangeText={setTaller}
                 />
                 <CampoTexto
                   testID="campo-ubicacion-taller"
                   etiqueta="Ubicación del taller"
                   icono="location-outline"
                   placeholder="Dirección o localidad"
+                  value={ubicacionTaller}
+                  onChangeText={setUbicacionTaller}
                 />
                 <CampoTexto
                   testID="campo-especialidades"
                   etiqueta="Especialidades"
                   icono="build-outline"
-                  placeholder="Ej: Motos, eléctricos, emergencias, etc."
+                  placeholder="Ej: Motos, eléctricos, emergencias"
+                  value={especialidades}
+                  onChangeText={setEspecialidades}
                 />
                 <CampoTexto
                   testID="campo-descripcion"
@@ -137,6 +225,8 @@ export default function RegisterScreen() {
                   icono="document-text-outline"
                   placeholder="Contanos sobre tus servicios…"
                   multiline
+                  value={descripcion}
+                  onChangeText={setDescripcion}
                 />
                 <SubirImagenes />
               </>
@@ -149,6 +239,8 @@ export default function RegisterScreen() {
               placeholder="Mínimo 6 caracteres"
               esContrasenia
               autoCapitalize="none"
+              value={password}
+              onChangeText={setPassword}
             />
             <CampoTexto
               testID="campo-password-confirmacion"
@@ -157,10 +249,16 @@ export default function RegisterScreen() {
               placeholder="Repetí tu contraseña"
               esContrasenia
               autoCapitalize="none"
+              value={confirmacion}
+              onChangeText={setConfirmacion}
             />
           </View>
 
-          <Casilla testID="casilla-terminos" accessibilityLabel="Acepto los términos y condiciones">
+          <Casilla
+            testID="casilla-terminos"
+            accessibilityLabel="Acepto los términos y condiciones"
+            checked={aceptaTerminos}
+            onChange={setAceptaTerminos}>
             <Text className="text-chico leading-[17px] text-texto-tenue">
               Acepto los <Text className="font-bold text-acento">Términos y Condiciones</Text> y la{' '}
               <Text className="font-bold text-acento">Política de Privacidad</Text>
@@ -172,7 +270,9 @@ export default function RegisterScreen() {
               testID="btn-crear-cuenta"
               titulo={textos.boton}
               iconoDerecha="arrow-forward"
-              onPress={() => router.replace('/inicio')}
+              onPress={registrar}
+              cargando={cargando}
+              deshabilitado={cargando}
             />
             <SeparadorO />
             <BotonGoogle />

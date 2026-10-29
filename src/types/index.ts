@@ -7,9 +7,8 @@
  * resuelve una función o una vista, y la capa de servicios los sigue exponiendo igual.
  */
 
-export type RolUsuario = 'cliente' | 'mecanico' | 'admin';
-
 export type EstadoServicio =
+  | 'pendiente'
   | 'solicitado'
   | 'aceptado'
   | 'en_camino'
@@ -17,6 +16,8 @@ export type EstadoServicio =
   | 'trabajando'
   | 'finalizado'
   | 'cancelada';
+
+export type RolUsuario = 'cliente' | 'mecanico' | 'admin';
 
 /** Estadísticas del perfil. Derivadas: en E2 salen de una vista agregada. */
 export interface EstadisticasPerfil {
@@ -109,6 +110,20 @@ export interface Servicio {
   creado_en: string;
   finalizado_en: string | null;
   historial: HitoServicio[];
+}
+
+/** Datos mínimos del mecánico asignado, para la tarjeta del detalle. */
+export interface MecanicoAsignado {
+  id: string;
+  nombre: string;
+  localidad: string | null;
+  telefono: string | null;
+  imagen_url: string | null;
+}
+
+/** Solicitud con su mecánico asignado, para la pantalla de seguimiento. */
+export interface DetalleSolicitud extends Servicio {
+  mecanico: MecanicoAsignado | null;
 }
 
 /** Contenido editorial del Home. Sin tabla asociada: es contenido de la Entrega 1. */
