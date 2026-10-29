@@ -1,6 +1,6 @@
 import type { Ionicons } from '@expo/vector-icons';
 
-import type { NombreColor } from '@/lib/tema';
+import { COLORES } from '@/lib/tema';
 import type { EstadoServicio } from '@/types';
 
 type NombreIcono = keyof typeof Ionicons.glyphMap;
@@ -27,25 +27,27 @@ export function iconoDeCategoria(codigo: string): NombreIcono {
 
 type DescriptorEstado = {
   etiqueta: string;
+  /** Texto del hito en la línea de tiempo del seguimiento. */
+  hito: string;
   icono: NombreIcono;
   /** Clase de NativeWind del tema, nunca un color literal. */
   color: string;
-  /** Token del tema para los íconos, que no aceptan clases. */
-  tono: NombreColor;
+  /** El mismo color para los íconos, que no aceptan clases. */
+  colorIcono: string;
 };
+
+const { acento: ACENTO, exito: EXITO, peligro: PELIGRO } = COLORES;
 
 const ESTADOS: Record<EstadoServicio, DescriptorEstado> = {
-  pendiente: { etiqueta: 'Esperando mecánico', icono: 'time-outline', color: 'text-acento', tono: 'acento' },
-  solicitado: { etiqueta: 'Solicitud enviada', icono: 'paper-plane-outline', color: 'text-acento', tono: 'acento' },
-  aceptado: { etiqueta: 'Mecánico asignado', icono: 'person-add-outline', color: 'text-acento', tono: 'acento' },
-  en_camino: { etiqueta: 'Mecánico en camino', icono: 'bicycle-outline', color: 'text-exito', tono: 'exito' },
-  llegue: { etiqueta: 'En el lugar', icono: 'flag-outline', color: 'text-exito', tono: 'exito' },
-  trabajando: { etiqueta: 'Trabajando', icono: 'build-outline', color: 'text-acento', tono: 'acento' },
-  finalizado: { etiqueta: 'Finalizado', icono: 'checkmark-circle-outline', color: 'text-exito', tono: 'exito' },
-  cancelada: { etiqueta: 'Cancelada', icono: 'close-circle-outline', color: 'text-peligro', tono: 'peligro' },
+  pendiente: { etiqueta: 'Buscando mecánico', hito: 'Solicitud enviada', icono: 'paper-plane-outline', color: 'text-acento', colorIcono: ACENTO },
+  aceptado: { etiqueta: 'Aceptada', hito: 'El mecánico aceptó', icono: 'person-add-outline', color: 'text-acento', colorIcono: ACENTO },
+  en_camino: { etiqueta: 'Mecánico en camino', hito: 'En camino', icono: 'bicycle-outline', color: 'text-exito', colorIcono: EXITO },
+  llegue: { etiqueta: 'Mecánico en el lugar', hito: 'Llegó al lugar', icono: 'flag-outline', color: 'text-exito', colorIcono: EXITO },
+  trabajando: { etiqueta: 'Trabajo en curso', hito: 'Inició el trabajo', icono: 'build-outline', color: 'text-acento', colorIcono: ACENTO },
+  finalizado: { etiqueta: 'Finalizado', hito: 'Trabajo finalizado', icono: 'checkmark-circle-outline', color: 'text-exito', colorIcono: EXITO },
+  cancelada: { etiqueta: 'Cancelada', hito: 'Solicitud cancelada', icono: 'close-circle-outline', color: 'text-peligro', colorIcono: PELIGRO },
 };
 
-/** Si la base trae un estado desconocido, se muestra como pendiente en vez de romper la vista. */
 export function descriptorEstado(estado: EstadoServicio): DescriptorEstado {
   return ESTADOS[estado] ?? ESTADOS.pendiente;
 }

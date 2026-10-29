@@ -1,7 +1,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,13 +13,15 @@ import {
 } from 'react-native';
 
 import { IndicadorPasos } from '@/components/solicitud/indicador-pasos';
-import { MapaEstatico } from '@/components/solicitud/mapa-estatico';
+import { MapaUbicacion } from '@/components/solicitud/mapa-ubicacion';
 import { SelectorCategoria } from '@/components/solicitud/selector-categoria';
 import { Boton, CampoTexto, Cargando, Pantalla, Tarjeta } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
 import {
+  coordenadasComoTexto,
   crearSolicitud,
   listarCategoriasAveria,
+  obtenerDireccion,
   obtenerUbicacionActual,
 } from '@/services';
 import type { CategoriaAveria, PasoSolicitud, UbicacionServicio } from '@/types';
@@ -37,49 +39,62 @@ export default function NuevaSolicitudScreen() {
   const router = useRouter();
 
   const categorias = useRecurso<CategoriaAveria[]>(listarCategoriasAveria, []);
-  const ubicacion = useRecurso<UbicacionServicio | null>(obtenerUbicacionActual, null);
 
   const [paso, setPaso] = useState(1);
   const [categoria, setCategoria] = useState<string | null>(null);
   const [descripcion, setDescripcion] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [direccionEditada, setDireccionEditada] = useState<string | null>(null);
-  const [actualizandoUbicacion, setActualizandoUbicacion] = useState(false);
-  const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<UbicacionServicio | null>(null);
 
+  /** Coordenadas elegidas: las del GPS o las del pin si el usuario lo movió. */
+  const [ubicacion, setUbicacion] = useState<UbicacionServicio | null>(null);
+  const [direccion, setDireccion] = useState('');
+  const [buscandoGps, setBuscandoGps] = useState(false);
+  /** RNF-PRIV-002: el permiso se pide recién al llegar al paso de ubicación. */
+  const [gpsPedido, setGpsPedido] = useState(false);
+  const [errorGps, setErrorGps] = useState<string | null>(null);
+  const [resolviendoDireccion, setResolviendoDireccion] = useState(false);
+  const [mapaActivo, setMapaActivo] = useState(false);
+  /** Descarta respuestas de geocodificación que llegan después de un movimiento más nuevo. */
+  const consultaRef = useRef(0);
+
+  const buscarUbicacion = useCallback(async () => {
+    const consulta = ++consultaRef.current;
+    setGpsPedido(true);
+    setBuscandoGps(true);
+    setErrorGps(null);
+
+    try {
+      const actual = await obtenerUbicacionActual();
+      if (consulta !== consultaRef.current) return;
+      setUbicacion(actual);
+      setDireccion(actual.direccion);
+    } catch (error) {
+      if (consulta !== consultaRef.current) return;
+      setErrorGps(error instanceof Error ? error.message : 'No pudimos obtener tu ubicación.');
+    } finally {
+      if (consulta === consultaRef.current) setBuscandoGps(false);
+    }
+  }, []);
+
+  /** El usuario arrastró el pin o tocó el mapa: se guardan esas coordenadas. */
+  const moverPin = useCallback(async (latitud: number, longitud: number) => {
+    const consulta = ++consultaRef.current;
+    setBuscandoGps(false);
+    setUbicacion({ latitud, longitud, direccion: coordenadasComoTexto(latitud, longitud) });
+    setResolviendoDireccion(true);
+
+    const resultado = await obtenerDireccion(latitud, longitud);
+    if (consulta !== consultaRef.current) return;
+
+    setUbicacion({ latitud, longitud, ...resultado });
+    setDireccion(resultado.direccion);
+    setResolviendoDireccion(false);
+  }, []);
 
   const categoriaElegida =
     categorias.datos.find((c) => c.codigo === categoria) ?? null;
 
   const esUltimoPaso = paso === PASOS.length;
-
-  const ubicacionActual = ubicacionSeleccionada ?? ubicacion.datos;
-
-  const moverMarcador = (latitud: number, longitud: number) => {
-    const base = ubicacionSeleccionada ?? ubicacion.datos;
-
-    if (!base) {
-      setUbicacionSeleccionada({
-        latitud,
-        longitud,
-        direccion: `${latitud.toFixed(6)}, ${longitud.toFixed(6)}`,
-        localidad: null,
-        referencia: null,
-      });
-    } else {
-      setUbicacionSeleccionada({
-        ...base,
-        latitud,
-        longitud,
-        direccion: `${latitud.toFixed(6)}, ${longitud.toFixed(6)}`,
-      });
-    }
-
-    setDireccionEditada(`${latitud.toFixed(6)}, ${longitud.toFixed(6)}`);
-  };
-
-  const direccionActual =
-    direccionEditada ?? ubicacionActual?.direccion ?? '';
 
   const retroceder = () => {
     if (paso > 1) {
@@ -89,93 +104,42 @@ export default function NuevaSolicitudScreen() {
     }
   };
 
-  const actualizarUbicacion = async () => {
-    if (actualizandoUbicacion) return;
-
-    setActualizandoUbicacion(true);
-
-    try {
-      const nuevaUbicacion = await obtenerUbicacionActual();
-      setUbicacionSeleccionada(nuevaUbicacion);
-      setDireccionEditada(nuevaUbicacion.direccion);
-    } catch (error) {
-      Alert.alert(
-        'No se pudo obtener la ubicación',
-        error instanceof Error
-          ? error.message
-          : 'Verificá los permisos de ubicación.',
-      );
-    } finally {
-      setActualizandoUbicacion(false);
-    }
-  };
-
   const avanzar = async () => {
-    console.log('[SOLICITUD] Se pulsó continuar/confirmar', {
-  paso,
-  esUltimoPaso,
-  categoria,
-  tieneUbicacion: !!ubicacion.datos,
-  direccion: direccionActual,
-});
-    if (!esUltimoPaso) {
-      if (paso === 1 && !categoriaElegida) {
-        Alert.alert(
-          'Falta elegir un problema',
-          'Seleccioná el tipo de asistencia.',
-        );
-        return;
-      }
-
-      if (paso === 2 && !ubicacionActual) {
-        Alert.alert(
-          'Ubicación no disponible',
-          'Usá el botón de ubicación actual e intentá nuevamente.',
-        );
-        return;
-      }
-
-      setPaso(paso + 1);
-      return;
-    }
-
-    if (!categoriaElegida) {
+    if (paso === 1 && !categoriaElegida) {
       Alert.alert('Falta elegir un problema', 'Seleccioná el tipo de asistencia.');
       return;
     }
 
-    if (!ubicacionActual || !direccionActual.trim()) {
+    if (paso === 2 && (!ubicacion || !direccion.trim())) {
       Alert.alert(
-        'Ubicación no disponible',
-        'Obtené tu ubicación o ingresá una dirección.',
+        'Falta la ubicación',
+        'Usá tu ubicación actual o marcá en el mapa dónde necesitás asistencia.',
       );
       return;
     }
 
-    if (enviando) return;
+    if (!esUltimoPaso) {
+      if (paso === 1 && !gpsPedido) void buscarUbicacion();
+      setPaso(paso + 1);
+      return;
+    }
+
+    if (!categoriaElegida || !ubicacion || enviando) return;
 
     setEnviando(true);
 
     try {
-      const solicitudId = await crearSolicitud({
+      const { id, codigo } = await crearSolicitud({
         categoriaId: categoriaElegida.id,
         descripcion,
-        ubicacion: {
-          ...ubicacionActual,
-          direccion: direccionActual.trim(),
-        },
+        ubicacion: { ...ubicacion, direccion: direccion.trim() },
       });
 
-      router.replace({
-        pathname: '/solicitud/confirmada',
-        params: { id: solicitudId },
-      });
+      router.replace({ pathname: '/solicitud/confirmada', params: { id, codigo } });
     } catch (error) {
       Alert.alert(
         'No se pudo enviar la solicitud',
-        error instanceof Error
-          ? error.message
-          : 'Ocurrió un error inesperado.',
+        error instanceof Error ? error.message : 'Ocurrió un error inesperado.',
       );
     } finally {
       setEnviando(false);
@@ -214,6 +178,7 @@ export default function NuevaSolicitudScreen() {
 
         <ScrollView
           className="flex-1"
+          scrollEnabled={!mapaActivo}
           contentContainerClassName="gap-4 px-4 pb-5 pt-3"
           keyboardShouldPersistTaps="handled"
         >
@@ -260,7 +225,8 @@ export default function NuevaSolicitudScreen() {
                     Tu ubicación
                   </Text>
                   <Text className="text-chico text-texto-tenue">
-                    Verificá la dirección donde necesitás asistencia.
+                    Usamos tu ubicación solo para que el mecánico llegue a vos. Arrastrá el pin o
+                    tocá el mapa para ajustar el punto exacto.
                   </Text>
                 </View>
 
@@ -268,53 +234,56 @@ export default function NuevaSolicitudScreen() {
                   testID="btn-usar-ubicacion"
                   accessibilityRole="button"
                   accessibilityLabel="Usar mi ubicación actual"
-                  disabled={actualizandoUbicacion}
-                  onPress={actualizarUbicacion}
+                  disabled={buscandoGps}
+                  onPress={buscarUbicacion}
                   className="flex-row items-center gap-1.5 active:opacity-60"
                 >
                   <Text className="text-mini font-bold text-acento">
-                    {actualizandoUbicacion ? 'Buscando...' : 'Usar mi ubicación'}
+                    {buscandoGps ? 'Buscando...' : 'Usar mi ubicación'}
                   </Text>
                   <Ionicons name="locate" size={17} color="#FFC107" />
                 </Pressable>
               </View>
 
-              <MapaEstatico
-                etiqueta="Elegí dónde necesitás asistencia"
-                ubicacion={ubicacionActual}
-                onMover={moverMarcador}
+              <MapaUbicacion
+                ubicacion={ubicacion}
+                onMover={moverPin}
+                onInteraccion={setMapaActivo}
               />
 
-              {ubicacion.cargando && !ubicacion.datos ? (
-                <Cargando mensaje="Obteniendo ubicación..." />
+              {errorGps && !ubicacion ? (
+                <Tarjeta className="flex-row gap-3 border-acento/40 p-3">
+                  <Ionicons name="alert-circle-outline" size={19} color="#FFC107" />
+                  <Text className="flex-1 text-chico text-texto">{errorGps}</Text>
+                </Tarjeta>
+              ) : null}
+
+              {buscandoGps && !ubicacion ? (
+                <Cargando mensaje="Obteniendo tu ubicación..." />
               ) : (
                 <Tarjeta className="gap-3 p-3">
                   <CampoTexto
                     testID="campo-direccion"
                     etiqueta="Dirección de asistencia"
-                    placeholder="Ingresá la dirección"
+                    placeholder={ubicacion ? 'Ingresá la dirección' : 'Marcá primero tu ubicación en el mapa'}
                     icono="location-outline"
-                    value={direccionActual}
-                    onChangeText={setDireccionEditada}
+                    value={direccion}
+                    onChangeText={setDireccion}
+                    editable={!!ubicacion}
                     accessibilityLabel="Dirección de asistencia"
                   />
 
                   <Text className="text-mini text-texto-tenue">
-                    Podés corregir la dirección antes de continuar. Para actualizar
-                    las coordenadas, usá el botón de ubicación actual.
+                    {resolviendoDireccion
+                      ? 'Buscando la dirección del punto marcado...'
+                      : 'Podés corregir la dirección. Las coordenadas son las del pin.'}
                   </Text>
 
-                  {ubicacionActual ? (
-                    <Text className="text-mini text-texto-tenue">
-                      Coordenadas seleccionadas: {ubicacionActual.latitud.toFixed(5)},{' '}
-                      {ubicacionActual.longitud.toFixed(5)}
+                  {ubicacion ? (
+                    <Text testID="texto-coordenadas" className="text-mini text-texto-tenue">
+                      Coordenadas: {ubicacion.latitud.toFixed(5)}, {ubicacion.longitud.toFixed(5)}
                     </Text>
-                  ) : (
-                    <Text className="text-mini text-texto-tenue">
-                      Todavía no tenemos coordenadas GPS. Permití el acceso a la
-                      ubicación e intentá nuevamente.
-                    </Text>
-                  )}
+                  ) : null}
                 </Tarjeta>
               )}
             </View>
@@ -366,7 +335,11 @@ export default function NuevaSolicitudScreen() {
                 <FilaResumen
                   icono="location-outline"
                   titulo="Ubicación"
-                  valor={direccionActual || 'Sin dirección disponible'}
+                  valor={
+                    ubicacion
+                      ? `${direccion || 'Sin dirección'}\n${ubicacion.latitud.toFixed(5)}, ${ubicacion.longitud.toFixed(5)}`
+                      : 'Sin ubicación'
+                  }
                 />
                 <FilaResumen
                   icono="document-text-outline"

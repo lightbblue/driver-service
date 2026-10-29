@@ -6,8 +6,7 @@ import { FilaEstadisticas } from '@/components/perfil/fila-estadisticas';
 import { FilaMenu, type ItemMenu } from '@/components/perfil/fila-menu';
 import { Avatar, Boton, Cargando, FondoMarca, LogoRider, Pantalla } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
-import { obtenerUsuarioActual } from '@/services';
-import { supabase } from '@/lib/supabase';
+import { cerrarSesion, obtenerUsuarioActual } from '@/services';
 import type { Perfil } from '@/types';
 
 /** Secciones de la maqueta. Ninguna navega en la Entrega 1 (sección 4.4). */
@@ -34,24 +33,6 @@ const ROLES: Record<string, string> = {
  */
 export default function PerfilScreen() {
   const router = useRouter();
-
-  async function cerrarSesion() {
-    try {
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        throw error;
-      }
-
-      router.replace('/login');
-    } catch (error) {
-      console.error('[PERFIL] Error al cerrar sesión:', error);
-      Alert.alert(
-        'No se pudo cerrar la sesión',
-        'Intentá nuevamente.'
-      );
-    }
-  }
   const { datos: usuario, cargando } = useRecurso<Perfil | null>(obtenerUsuarioActual, null);
 
   const localidad = [usuario?.localidad, usuario?.provincia].filter(Boolean).join(', ');
@@ -139,14 +120,18 @@ export default function PerfilScreen() {
             ))}
           </View>
 
-          {/* Cierra la sesión real de Supabase. */}
+          {/* Cierra la sesión de Supabase y borra la guardada en el dispositivo (RF-AUTH-005) */}
           <Boton
             testID="btn-cerrar-sesion"
             titulo="Cerrar sesión"
             variante="peligro"
             icono="log-out-outline"
             className="mt-2"
-            onPress={cerrarSesion}
+            onPress={() =>
+              cerrarSesion()
+                .then(() => router.replace('/login'))
+                .catch((error: Error) => Alert.alert('No se pudo cerrar la sesión', error.message))
+            }
           />
         </View>
       </ScrollView>

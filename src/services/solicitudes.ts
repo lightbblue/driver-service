@@ -1,198 +1,277 @@
+import { lanzar } from '@/lib/errores';
 import { supabase } from '@/lib/supabase';
 import type {
-  DetalleSolicitud,
+  ActorCancelacion,
   EstadoServicio,
   HitoServicio,
-  MecanicoAsignado,
   Servicio,
   UbicacionServicio,
 } from '@/types';
 
-/** Estados en los que la solicitud sigue abierta. */
-const ESTADOS_ACTIVOS: EstadoServicio[] = [
+import { obtenerUsuarioId } from './sesion';
+
+/** Orden del flujo normal del servicio (sin la cancelación). */
+export const FLUJO_ESTADOS: EstadoServicio[] = [
   'pendiente',
-  'solicitado',
   'aceptado',
   'en_camino',
   'llegue',
   'trabajando',
+  'finalizado',
 ];
 
-/** Solo se puede cancelar antes de que el mecánico empiece a trabajar (RN-009). */
-const ESTADOS_CANCELABLES: EstadoServicio[] = [
-  'pendiente',
-  'solicitado',
-  'aceptado',
-  'en_camino',
-  'llegue',
-];
+const ESTADOS_ACTIVOS: EstadoServicio[] = FLUJO_ESTADOS.slice(0, -1);
 
 export function esEstadoActivo(estado: EstadoServicio): boolean {
   return ESTADOS_ACTIVOS.includes(estado);
 }
 
+/** RN-009: se puede cancelar mientras el trabajo no haya empezado. */
 export function esCancelable(estado: EstadoServicio): boolean {
-  return ESTADOS_CANCELABLES.includes(estado);
+  return ['pendiente', 'aceptado', 'en_camino', 'llegue'].includes(estado);
 }
 
-/** Fila de `solicitudes` con sus relaciones, tal como la devuelve Supabase. */
+/** Próximo estado que registra el mecánico asignado, o null si no hay. */
+export function siguienteEstadoMecanico(estado: EstadoServicio): EstadoServicio | null {
+  const siguientes: Partial<Record<EstadoServicio, EstadoServicio>> = {
+    aceptado: 'en_camino',
+    en_camino: 'llegue',
+    llegue: 'trabajando',
+    trabajando: 'finalizado',
+  };
+  return siguientes[estado] ?? null;
+}
+
+const COLUMNAS = `
+  id, codigo, usuario_id, mecanico_id, categoria_id, descripcion,
+  direccion, latitud, longitud, estado, eta_minutos, motivo_cancelacion,
+  creado_en, actualizado_en,
+  categoria:categorias_averia ( nombre, icono ),
+  mecanico:mecanicos ( id, nombre, telefono ),
+  historial:historial_solicitudes ( id, estado_anterior, estado, usuario_id, nota, creado_en )
+`;
+
 type FilaSolicitud = {
   id: string;
-  codigo: string | null;
+  codigo: string;
   usuario_id: string;
   mecanico_id: string | null;
+  categoria_id: string | null;
   descripcion: string | null;
   direccion: string | null;
   latitud: number | null;
   longitud: number | null;
   estado: EstadoServicio;
   eta_minutos: number | null;
+  motivo_cancelacion: string | null;
   creado_en: string;
-  categorias_averia: { nombre: string } | null;
-  historial_solicitudes?: { estado: EstadoServicio; nota: string | null; creado_en: string }[];
-  mecanicos?: MecanicoAsignado | null;
+  actualizado_en: string;
+  categoria: { nombre: string; icono: string | null } | null;
+  mecanico: { id: string; nombre: string; telefono: string | null } | null;
+  historial:
+    | {
+        id: string;
+        estado_anterior: EstadoServicio | null;
+        estado: EstadoServicio;
+        usuario_id: string | null;
+        nota: string | null;
+        creado_en: string;
+      }[]
+    | null;
 };
 
-const CAMPOS_SOLICITUD =
-  'id, codigo, usuario_id, mecanico_id, descripcion, direccion, latitud, longitud, estado, eta_minutos, creado_en, categorias_averia(nombre)';
-
-async function usuarioActualId(): Promise<string> {
-  const { data, error } = await supabase.auth.getUser();
-
-  if (error || !data.user) {
-    throw new Error('Iniciá sesión para consultar tus solicitudes.');
-  }
-
-  return data.user.id;
-}
-
 function aServicio(fila: FilaSolicitud): Servicio {
-  const historial: HitoServicio[] = [...(fila.historial_solicitudes ?? [])]
-    .sort((a, b) => a.creado_en.localeCompare(b.creado_en))
-    .map((hito) => ({
-      estado_nuevo: hito.estado,
-      ocurrido_en: hito.creado_en,
-      observacion: hito.nota,
-    }));
+  const historial: HitoServicio[] = (fila.historial ?? [])
+    .map((h) => ({
+      id: h.id,
+      estado_anterior: h.estado_anterior,
+      estado_nuevo: h.estado,
+      actor_id: h.usuario_id,
+      ocurrido_en: h.creado_en,
+      observacion: h.nota,
+    }))
+    .sort((a, b) => a.ocurrido_en.localeCompare(b.ocurrido_en));
 
-  const finalizado = historial.find((hito) => hito.estado_nuevo === 'finalizado');
+  // Quién canceló sale de la bitácora: si el actor no es el cliente, fue el mecánico.
+  const cancelacion = historial.find((h) => h.estado_nuevo === 'cancelada');
+  const canceladoPor: ActorCancelacion | null = !cancelacion
+    ? null
+    : cancelacion.actor_id && cancelacion.actor_id !== fila.usuario_id
+      ? 'mecanico'
+      : 'cliente';
 
   return {
     id: fila.id,
-    codigo: fila.codigo ?? fila.id.slice(0, 8).toUpperCase(),
+    codigo: fila.codigo,
     cliente_id: fila.usuario_id,
     mecanico_id: fila.mecanico_id,
-    categoria_codigo: fila.categorias_averia?.nombre ?? '',
-    categoria_nombre: fila.categorias_averia?.nombre ?? 'Asistencia mecánica',
+    mecanico: fila.mecanico,
+    categoria_id: fila.categoria_id,
+    categoria_nombre: fila.categoria?.nombre ?? 'Asistencia mecánica',
+    categoria_icono: fila.categoria?.icono ?? null,
     descripcion: fila.descripcion,
     ubicacion: {
       latitud: fila.latitud ?? 0,
       longitud: fila.longitud ?? 0,
       direccion: fila.direccion ?? 'Sin dirección registrada',
-      localidad: null,
-      referencia: null,
     },
     estado: fila.estado,
     eta_minutos: fila.eta_minutos,
+    motivo_cancelacion: fila.motivo_cancelacion,
+    cancelado_por: canceladoPor,
     creado_en: fila.creado_en,
-    finalizado_en: finalizado?.ocurrido_en ?? null,
+    actualizado_en: fila.actualizado_en,
     historial,
   };
 }
 
-/** Solicitudes del usuario autenticado, de la más nueva a la más vieja. */
+/** Solicitudes creadas por el usuario autenticado, de la más reciente a la más antigua. */
 export async function listarSolicitudes(): Promise<Servicio[]> {
-  const usuarioId = await usuarioActualId();
+  const usuarioId = await obtenerUsuarioId();
 
   const { data, error } = await supabase
     .from('solicitudes')
-    .select(CAMPOS_SOLICITUD)
+    .select(COLUMNAS)
     .eq('usuario_id', usuarioId)
     .order('creado_en', { ascending: false });
 
-  if (error) {
-    throw new Error(`No se pudieron cargar las solicitudes: ${error.message}`);
-  }
-
-  return ((data ?? []) as unknown as FilaSolicitud[]).map(aServicio);
+  if (error) lanzar(error, 'No se pudieron cargar tus solicitudes');
+  return (data as unknown as FilaSolicitud[]).map(aServicio);
 }
 
-/** Detalle de una solicitud propia, con su historial de estados y el mecánico asignado. */
-export async function obtenerSolicitud(id: string): Promise<DetalleSolicitud | null> {
-  await usuarioActualId();
+/** Bandeja del mecánico: lo que tiene asignado y lo que espera un mecánico. */
+export async function listarSolicitudesMecanico(
+  mecanicoId: string,
+): Promise<{ asignadas: Servicio[]; disponibles: Servicio[] }> {
+  const [asignadas, disponibles] = await Promise.all([
+    supabase
+      .from('solicitudes')
+      .select(COLUMNAS)
+      .eq('mecanico_id', mecanicoId)
+      .order('creado_en', { ascending: false }),
+    supabase
+      .from('solicitudes')
+      .select(COLUMNAS)
+      .eq('estado', 'pendiente')
+      .is('mecanico_id', null)
+      .order('creado_en', { ascending: true }),
+  ]);
 
+  if (asignadas.error) lanzar(asignadas.error, 'No se pudieron cargar tus servicios');
+  if (disponibles.error) lanzar(disponibles.error, 'No se pudieron cargar las solicitudes disponibles');
+
+  return {
+    asignadas: (asignadas.data as unknown as FilaSolicitud[]).map(aServicio),
+    disponibles: (disponibles.data as unknown as FilaSolicitud[]).map(aServicio),
+  };
+}
+
+export async function obtenerSolicitud(id: string): Promise<Servicio | null> {
   const { data, error } = await supabase
     .from('solicitudes')
-    .select(
-      `${CAMPOS_SOLICITUD}, historial_solicitudes(estado, nota, creado_en), mecanicos(id, nombre, localidad, telefono, imagen_url)`,
-    )
+    .select(COLUMNAS)
     .eq('id', id)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(`No se pudo cargar la solicitud: ${error.message}`);
-  }
-
-  if (!data) return null;
-
-  const fila = data as unknown as FilaSolicitud;
-  return { ...aServicio(fila), mecanico: fila.mecanicos ?? null };
+  if (error) lanzar(error, 'No se pudo cargar la solicitud');
+  return data ? aServicio(data as unknown as FilaSolicitud) : null;
 }
 
-/** Solicitud abierta del usuario, si tiene alguna. */
+/** Solicitud en curso del usuario autenticado, si la hay. */
 export async function obtenerSolicitudActiva(): Promise<Servicio | null> {
-  const solicitudes = await listarSolicitudes();
-  return solicitudes.find((s) => esEstadoActivo(s.estado)) ?? null;
+  const usuarioId = await obtenerUsuarioId();
+
+  const { data, error } = await supabase
+    .from('solicitudes')
+    .select(COLUMNAS)
+    .eq('usuario_id', usuarioId)
+    .in('estado', ESTADOS_ACTIVOS)
+    .order('creado_en', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) lanzar(error, 'No se pudo consultar tu solicitud en curso');
+  return data ? aServicio(data as unknown as FilaSolicitud) : null;
 }
 
-/** Guarda una solicitud en Supabase para el usuario autenticado y devuelve su id. */
+/**
+ * Guarda una solicitud del usuario autenticado (RF-ASSIST-005) y devuelve su
+ * id y su código. La base rechaza una segunda solicitud activa (RN-010).
+ */
 export async function crearSolicitud(datos: {
   categoriaId: string;
   descripcion: string;
   ubicacion: UbicacionServicio;
-}): Promise<string> {
-  const usuarioId = await usuarioActualId();
+}): Promise<{ id: string; codigo: string }> {
+  const usuarioId = await obtenerUsuarioId();
 
+  // Código, estado y mecánico los completa la base.
   const { data, error } = await supabase
     .from('solicitudes')
     .insert({
       usuario_id: usuarioId,
       categoria_id: datos.categoriaId,
       descripcion: datos.descripcion.trim() || null,
-      direccion: datos.ubicacion.direccion,
+      direccion: datos.ubicacion.direccion.trim(),
       latitud: datos.ubicacion.latitud,
       longitud: datos.ubicacion.longitud,
-      estado: 'pendiente',
     })
-    .select('id')
+    .select('id, codigo')
     .single();
 
-  if (error) {
-    throw new Error(`No se pudo guardar la solicitud: ${error.message}`);
-  }
-
-  if (!data?.id) {
-    throw new Error('Supabase no devolvió el identificador de la solicitud.');
-  }
-
-  return data.id;
+  if (error) lanzar(error, 'No se pudo guardar la solicitud');
+  return data as { id: string; codigo: string };
 }
 
-/** Cancela una solicitud propia. La base valida que la transición sea posible. */
-export async function cancelarSolicitud(
-  solicitudId: string,
-  motivo = 'Cancelación solicitada por el cliente',
+/**
+ * Registra un cambio de estado con su nota mediante `cambiar_estado_solicitud()`:
+ * la base valida quién puede hacerlo y la transición (RN-004), y escribe la
+ * bitácora (RF-DATA-004).
+ */
+export async function cambiarEstadoSolicitud(
+  id: string,
+  estado: EstadoServicio,
+  opciones: { observacion?: string; etaMinutos?: number | null } = {},
 ): Promise<void> {
-  await usuarioActualId();
-
   const { error } = await supabase.rpc('cambiar_estado_solicitud', {
-    p_solicitud_id: solicitudId,
-    p_estado: 'cancelada',
-    p_nota: motivo,
-    p_eta_minutos: null,
+    p_solicitud_id: id,
+    p_estado: estado,
+    p_nota: opciones.observacion?.trim() || null,
+    p_eta_minutos: opciones.etaMinutos ?? null,
   });
 
-  if (error) {
-    throw new Error(`No se pudo cancelar la solicitud: ${error.message}`);
-  }
+  if (error) lanzar(error, 'No se pudo actualizar la solicitud');
+}
+
+export async function cancelarSolicitud(id: string, motivo: string): Promise<void> {
+  return cambiarEstadoSolicitud(id, 'cancelada', { observacion: motivo });
+}
+
+/**
+ * Avisa cada vez que cambia una solicitud visible para el usuario (o una en
+ * particular si se pasa `id`). Devuelve la función para desuscribirse.
+ */
+export function suscribirseASolicitudes(alCambiar: () => void, id?: string): () => void {
+  const canal = supabase
+    .channel(`solicitudes-${id ?? 'todas'}-${Math.random().toString(36).slice(2)}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'solicitudes', ...(id ? { filter: `id=eq.${id}` } : {}) },
+      alCambiar,
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'historial_solicitudes',
+        ...(id ? { filter: `solicitud_id=eq.${id}` } : {}),
+      },
+      alCambiar,
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(canal);
+  };
 }
