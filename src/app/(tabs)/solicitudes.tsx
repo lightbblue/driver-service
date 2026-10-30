@@ -1,99 +1,112 @@
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 
-import { TarjetaSolicitud } from '@/components/solicitud/tarjeta-solicitud';
-import { Boton, Cargando, EncabezadoSeccion, ListaVacia, Pantalla } from '@/components/ui';
+import { TarjetaSolicitud } from '@/components/seguimiento/tarjeta-solicitud';
+import {
+  Boton,
+  Cargando,
+  Conmutador,
+  ListaVacia,
+  LogoRider,
+  Pantalla,
+  type OpcionConmutador,
+} from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
-import { COLORES } from '@/lib/tema';
-import { esEstadoActivo, listarSolicitudes } from '@/services';
+import {
+  listarSolicitudes,
+  listarSolicitudesMecanico,
+  obtenerMecanicoIdActual,
+  suscribirseASolicitudes,
+} from '@/services';
 import type { Servicio } from '@/types';
 
-/** Mis solicitudes (RF-VIEW-009): las activas primero y después el historial. */
+type Bandeja = 'asignadas' | 'disponibles';
+
+const BANDEJAS: OpcionConmutador<Bandeja>[] = [
+  { valor: 'asignadas', etiqueta: 'Mis servicios', icono: 'construct-outline' },
+  { valor: 'disponibles', etiqueta: 'Disponibles', icono: 'notifications-outline' },
+];
+
+type Listado = { esMecanico: boolean; asignadas: Servicio[]; disponibles: Servicio[] };
+
+/** El cliente ve sus solicitudes; el mecánico, sus servicios y los que esperan mecánico. */
+async function cargarListado(): Promise<Listado> {
+  const mecanicoId = await obtenerMecanicoIdActual();
+  if (mecanicoId) {
+    return { esMecanico: true, ...(await listarSolicitudesMecanico(mecanicoId)) };
+  }
+  return { esMecanico: false, asignadas: await listarSolicitudes(), disponibles: [] };
+}
+
+/** Mis solicitudes (RF-VIEW-008): datos reales del usuario autenticado. */
 export default function SolicitudesScreen() {
   const router = useRouter();
-  const { datos: solicitudes, cargando, error, recargar } = useRecurso<Servicio[]>(
-    listarSolicitudes,
-    [],
-  );
+  const listado = useRecurso<Listado | null>(cargarListado, null);
+  const { recargar } = listado;
+  const [bandeja, setBandeja] = useState<Bandeja>('asignadas');
 
-  // Al volver del detalle (por ejemplo, después de cancelar) la lista se actualiza.
-  useFocusEffect(recargar);
+  useEffect(() => suscribirseASolicitudes(recargar), [recargar]);
 
-  const activas = solicitudes.filter((s) => esEstadoActivo(s.estado));
-  const finalizadas = solicitudes.filter((s) => !esEstadoActivo(s.estado));
-
-  const abrir = (solicitud: Servicio) =>
-    router.push({ pathname: '/solicitud/[id]', params: { id: solicitud.id } });
+  const esMecanico = listado.datos?.esMecanico ?? false;
+  const lista = listado.datos?.[esMecanico ? bandeja : 'asignadas'] ?? [];
 
   return (
     <Pantalla>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-5 px-4 pb-10 pt-2"
-        refreshControl={
-          <RefreshControl
-            refreshing={cargando && solicitudes.length > 0}
-            onRefresh={recargar}
-            tintColor={COLORES.acento}
-            colors={[COLORES.acento]}
-            progressBackgroundColor={COLORES.superficie}
-          />
-        }>
-        <View className="gap-1 pt-2">
-          <Text className="text-3xl font-extrabold text-texto">Mis solicitudes</Text>
-          <Text className="text-sm text-texto-tenue">Consultá el estado de tus asistencias.</Text>
+      <View className="gap-4 px-4 pb-3 pt-2">
+        <LogoRider tamanio="chico" />
+        <View>
+          <Text className="text-2xl font-extrabold text-texto">
+            {esMecanico ? 'Servicios' : 'Mis solicitudes'}
+          </Text>
+          <Text className="text-chico text-texto-tenue">
+            {esMecanico
+              ? 'Aceptá solicitudes y registrá cada etapa del servicio.'
+              : 'Consultá el estado de tus asistencias.'}
+          </Text>
         </View>
+        {esMecanico ? <Conmutador opciones={BANDEJAS} valor={bandeja} onCambio={setBandeja} /> : null}
+      </View>
 
-        {cargando && solicitudes.length === 0 ? (
-          <Cargando mensaje="Cargando tus solicitudes…" />
-        ) : error ? (
-          <View className="gap-2">
+      {listado.cargando && !listado.datos ? (
+        <Cargando mensaje="Cargando solicitudes..." />
+      ) : listado.error && !listado.datos ? (
+        <View className="gap-4 px-6">
+          <ListaVacia titulo="No pudimos cargar las solicitudes" detalle={listado.error} icono="cloud-offline-outline" />
+          <Boton titulo="Reintentar" variante="secundario" onPress={recargar} />
+        </View>
+      ) : (
+        <ScrollView
+          testID="lista-solicitudes"
+          contentContainerClassName="gap-3 px-4 pb-barra-inferior pt-1"
+          refreshControl={
+            <RefreshControl refreshing={listado.cargando} onRefresh={recargar} tintColor="#FFC107" />
+          }>
+          {lista.length === 0 ? (
             <ListaVacia
-              titulo="No pudimos cargar tus solicitudes"
-              detalle={error}
-              icono="cloud-offline-outline"
+              titulo={
+                esMecanico && bandeja === 'disponibles'
+                  ? 'No hay solicitudes esperando mecánico'
+                  : 'Todavía no tenés solicitudes'
+              }
+              detalle={
+                esMecanico
+                  ? 'Las nuevas solicitudes aparecen acá automáticamente.'
+                  : 'Cuando solicites asistencia, vas a poder seguirla desde acá.'
+              }
+              icono="file-tray-outline"
             />
-            <Boton titulo="Reintentar" variante="secundario" icono="refresh" onPress={recargar} />
-          </View>
-        ) : solicitudes.length === 0 ? (
-          <View className="gap-2">
-            <ListaVacia
-              titulo="Todavía no tenés solicitudes"
-              detalle="Cuando pidas asistencia, vas a poder seguirla desde acá."
-              icono="document-text-outline"
-            />
-            <Boton
-              titulo="Solicitar asistencia"
-              icono="warning"
-              onPress={() => router.push('/solicitud/nueva')}
-            />
-          </View>
-        ) : (
-          <>
-            {activas.length > 0 ? (
-              <View>
-                <EncabezadoSeccion titulo="En curso" />
-                <View className="gap-3">
-                  {activas.map((s) => (
-                    <TarjetaSolicitud key={s.id} solicitud={s} onPress={() => abrir(s)} />
-                  ))}
-                </View>
-              </View>
-            ) : null}
-
-            {finalizadas.length > 0 ? (
-              <View>
-                <EncabezadoSeccion titulo="Historial" />
-                <View className="gap-3">
-                  {finalizadas.map((s) => (
-                    <TarjetaSolicitud key={s.id} solicitud={s} onPress={() => abrir(s)} />
-                  ))}
-                </View>
-              </View>
-            ) : null}
-          </>
-        )}
-      </ScrollView>
+          ) : (
+            lista.map((servicio) => (
+              <TarjetaSolicitud
+                key={servicio.id}
+                servicio={servicio}
+                onPress={() => router.push({ pathname: '/solicitud/[id]', params: { id: servicio.id } })}
+              />
+            ))
+          )}
+        </ScrollView>
+      )}
     </Pantalla>
   );
 }

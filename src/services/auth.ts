@@ -16,6 +16,29 @@ export type DatosRegistro = {
   };
 };
 
+/** Inicia sesión con correo y contraseña. Los errores llegan con un mensaje para mostrar. */
+export async function iniciarSesion(email: string, password: string): Promise<void> {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password,
+  });
+
+  if (error) {
+    const mensaje = error.message.toLowerCase();
+    if (mensaje.includes('email not confirmed')) {
+      throw new Error('Tu correo todavía no está confirmado. Revisá tu email.');
+    }
+    if (mensaje.includes('invalid login credentials')) {
+      throw new Error('El correo o la contraseña son incorrectos.');
+    }
+    throw new Error('No se pudo iniciar sesión. Revisá los datos e intentá nuevamente.');
+  }
+
+  if (!data.session) {
+    throw new Error('No se pudo iniciar la sesión. Intentá nuevamente.');
+  }
+}
+
 /**
  * Crea la cuenta en Supabase Auth. Los datos del perfil viajan como metadatos y
  * la base los copia a `perfiles` (y a `mecanicos` si el rol es mecánico) con un trigger.

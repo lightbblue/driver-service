@@ -1,16 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { FilaEstadisticas } from '@/components/perfil/fila-estadisticas';
 import { FilaMenu, type ItemMenu } from '@/components/perfil/fila-menu';
 import { Avatar, Boton, Cargando, FondoMarca, LogoRider, Pantalla } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
-import { obtenerUsuarioActual } from '@/services';
-import { supabase } from '@/lib/supabase';
+import { COLORES } from '@/lib/tema';
+import {
+  actualizarFotoPerfil,
+  cerrarSesion,
+  obtenerUsuarioActual,
+} from '@/services';
 import type { Perfil } from '@/types';
 
-/** Secciones de la maqueta. Ninguna navega en la Entrega 1 (sección 4.4). */
 const SECCIONES: ItemMenu[] = [
   { id: 'datos', titulo: 'Mis datos', subtitulo: 'Información personal, contacto y dirección', icono: 'person-outline' },
   { id: 'motos', titulo: 'Mis motos', subtitulo: 'Gestioná tus vehículos', icono: 'bicycle-outline' },
@@ -28,38 +33,56 @@ const ROLES: Record<string, string> = {
   admin: 'Administrador',
 };
 
-/**
- * Pantalla de Perfil (RF-VIEW-005).
- * Muestra el usuario de ejemplo de `usuarios.json`; no hay sesión que consultar.
- */
 export default function PerfilScreen() {
   const router = useRouter();
+  const { datos: usuario, cargando, recargar } = useRecurso<Perfil | null>(obtenerUsuarioActual, null);
+  const [avatarLocal, setAvatarLocal] = useState<string | null>(null);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
 
-  async function cerrarSesion() {
-    try {
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        throw error;
-      }
-
-      router.replace('/login');
-    } catch (error) {
-      console.error('[PERFIL] Error al cerrar sesión:', error);
-      Alert.alert(
-        'No se pudo cerrar la sesión',
-        'Intentá nuevamente.'
-      );
-    }
-  }
-  const { datos: usuario, cargando } = useRecurso<Perfil | null>(obtenerUsuarioActual, null);
+  // Al volver de "Editar perfil" se vuelven a leer los datos para mostrar los cambios.
+  useFocusEffect(recargar);
 
   const localidad = [usuario?.localidad, usuario?.provincia].filter(Boolean).join(', ');
+
+  async function cambiarFoto() {
+    if (subiendoFoto) return;
+
+    try {
+      const resultado = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        // En Android no se puede leer el archivo local con fetch: la imagen se pide ya codificada.
+        base64: true,
+      });
+
+      if (resultado.canceled) return;
+
+      const imagen = resultado.assets[0];
+
+      if (!imagen?.base64) {
+        Alert.alert('Error', 'No se pudo obtener la imagen seleccionada.');
+        return;
+      }
+
+      setSubiendoFoto(true);
+      const url = await actualizarFotoPerfil(imagen.base64, imagen.mimeType);
+      setAvatarLocal(url);
+      Alert.alert('Foto actualizada', 'Tu foto de perfil se guardó correctamente.');
+    } catch (error) {
+      Alert.alert(
+        'No se pudo cambiar la foto',
+        error instanceof Error ? error.message : 'Intentá nuevamente.',
+      );
+    } finally {
+      setSubiendoFoto(false);
+    }
+  }
 
   return (
     <Pantalla>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-10">
-        {/* Encabezado con imagen de fondo */}
         <View className="overflow-hidden">
           <FondoMarca variante="montania" velo="suave" />
           <View className="px-4 pb-5 pt-2">
@@ -71,8 +94,9 @@ export default function PerfilScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Notificaciones"
                   hitSlop={8}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie">
-                  <Ionicons name="notifications-outline" size={19} color="#FFFFFF" />
+                  className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie"
+                >
+                  <Ionicons name="notifications-outline" size={19} color={COLORES.texto} />
                   <View className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-peligro" />
                 </Pressable>
                 <Pressable
@@ -80,27 +104,34 @@ export default function PerfilScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Configuración"
                   hitSlop={8}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie">
-                  <Ionicons name="settings-outline" size={19} color="#FFFFFF" />
+                  className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie"
+                >
+                  <Ionicons name="settings-outline" size={19} color={COLORES.texto} />
                 </Pressable>
               </View>
             </View>
 
-            {cargando ? (
+            {cargando && !usuario ? (
               <Cargando mensaje="" />
             ) : (
               <View className="flex-row items-center gap-4">
                 <View>
                   <View className="rounded-full border-2 border-acento p-0.5">
-                    <Avatar uri={usuario?.avatar_url} tamanio={84} />
+                    <Avatar uri={avatarLocal ?? usuario?.avatar_url} tamanio={84} />
                   </View>
-                  {/* Cambio de foto: control inerte (RF-PROF-002, E2) */}
                   <Pressable
                     testID="btn-cambiar-foto"
                     accessibilityRole="button"
                     accessibilityLabel="Cambiar foto de perfil"
-                    className="absolute -bottom-1 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-fondo bg-superficie-alta active:bg-superficie">
-                    <Ionicons name="camera" size={15} color="#FFFFFF" />
+                    disabled={subiendoFoto}
+                    onPress={cambiarFoto}
+                    className="absolute -bottom-1 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-fondo bg-superficie-alta active:bg-superficie"
+                  >
+                    {subiendoFoto ? (
+                      <ActivityIndicator size="small" color={COLORES.texto} />
+                    ) : (
+                      <Ionicons name="camera" size={15} color={COLORES.texto} />
+                    )}
                   </Pressable>
                 </View>
 
@@ -113,7 +144,7 @@ export default function PerfilScreen() {
                   </Text>
                   {localidad ? (
                     <View className="flex-row items-center gap-1">
-                      <Ionicons name="location-outline" size={14} color="#9CA3AF" />
+                      <Ionicons name="location-outline" size={14} color={COLORES.textoTenue} />
                       <Text className="text-chico text-texto-tenue">{localidad}</Text>
                     </View>
                   ) : null}
@@ -123,6 +154,7 @@ export default function PerfilScreen() {
                     variante="fantasma"
                     icono="create-outline"
                     className="mt-1 min-h-[40px] self-start px-4 py-2"
+                    onPress={() => router.push('/editar-perfil')}
                   />
                 </View>
               </View>
@@ -139,14 +171,19 @@ export default function PerfilScreen() {
             ))}
           </View>
 
-          {/* Cierra la sesión real de Supabase. */}
           <Boton
             testID="btn-cerrar-sesion"
             titulo="Cerrar sesión"
             variante="peligro"
             icono="log-out-outline"
             className="mt-2"
-            onPress={cerrarSesion}
+            onPress={() =>
+              cerrarSesion()
+                .then(() => router.replace('/login'))
+                .catch((error: Error) =>
+                  Alert.alert('No se pudo cerrar la sesión', error.message),
+                )
+            }
           />
         </View>
       </ScrollView>

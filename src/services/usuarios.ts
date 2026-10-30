@@ -1,72 +1,173 @@
+import type { User } from '@supabase/supabase-js';
+
+import { lanzar } from '@/lib/errores';
 import { supabase } from '@/lib/supabase';
-import type { Perfil } from '@/types';
+import type { Perfil, RolUsuario } from '@/types';
 
-export async function obtenerUsuarioActual(): Promise<Perfil | null> {
-  const { data: authData, error: authError } =
-    await supabase.auth.getUser();
+import { obtenerSesion } from './sesion';
 
-  if (authError) {
-    throw authError;
-  }
+type FilaPerfil = {
+  id: string;
+  nombre: string | null;
+  telefono: string | null;
+  avatar_url: string | null;
+  creado_en: string;
+};
 
-  const usuario = authData.user;
+/** El rol lo guarda el registro en los metadatos de la cuenta (services/auth). */
+function rolDe(usuario: User | null): RolUsuario {
+  const rol = usuario?.user_metadata?.rol ?? usuario?.app_metadata?.rol;
+  return rol === 'mecanico' || rol === 'admin' ? rol : 'cliente';
+}
 
-  if (!usuario) {
-    return null;
-  }
-
-  const { data: perfil, error: perfilError } = await supabase
-    .from('perfiles')
-    .select('id, nombre, telefono, avatar_url, creado_en')
-    .eq('id', usuario.id)
-    .maybeSingle();
-
-  if (perfilError) {
-    throw perfilError;
-  }
-
-  const nombre =
-    perfil?.nombre ||
-    usuario.user_metadata?.nombre ||
-    '';
-
-  const fechaCreacion =
-    perfil?.creado_en || usuario.created_at;
-
+function aPerfil(fila: FilaPerfil, usuario: User | null): Perfil {
   return {
-    id: usuario.id,
-    nombre_completo: nombre,
-    email: usuario.email ?? '',
-    telefono:
-      perfil?.telefono ??
-      usuario.user_metadata?.telefono ??
-      null,
-    rol: 'cliente',
-    avatar_url: perfil?.avatar_url ?? null,
+    id: fila.id,
+    nombre_completo: fila.nombre || 'Sin nombre',
+    email: usuario?.email ?? '',
+    telefono: fila.telefono,
+    rol: rolDe(usuario),
+    avatar_url: fila.avatar_url,
     localidad: null,
     provincia: null,
-    creado_en: fechaCreacion,
+    creado_en: fila.creado_en,
     estadisticas: {
       solicitudes: 0,
       resueltas: 0,
       calificacion: null,
-      miembro_desde: new Date(fechaCreacion).getFullYear(),
+      miembro_desde: new Date(fila.creado_en).getFullYear(),
     },
   };
 }
 
-export async function obtenerUsuario(
-  id: string,
-): Promise<Perfil | null> {
-  const { data, error } = await supabase.auth.getUser();
+/** Perfil de la cuenta autenticada, o null si no hay sesión. */
+export async function obtenerUsuarioActual(): Promise<Perfil | null> {
+  const sesion = await obtenerSesion();
+  if (!sesion) return null;
 
-  if (error) {
-    throw error;
+  const { data, error } = await supabase
+    .from('perfiles')
+    .select('id, nombre, telefono, avatar_url, creado_en')
+    .eq('id', sesion.user.id)
+    .maybeSingle();
+
+  if (error) lanzar(error, 'No se pudo cargar tu perfil');
+  if (!data) return null;
+
+  return aPerfil(data as FilaPerfil, sesion.user);
+}
+
+/** Busca un perfil por id. Las políticas RLS solo dejan leer el propio. */
+export async function obtenerUsuario(id: string): Promise<Perfil | null> {
+  const { data, error } = await supabase
+    .from('perfiles')
+    .select('id, nombre, telefono, avatar_url, creado_en')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) lanzar(error, 'No se pudo cargar el perfil');
+  if (!data) return null;
+
+  const sesion = await obtenerSesion();
+  return aPerfil(data as FilaPerfil, sesion?.user.id === id ? sesion.user : null);
+}
+
+/**
+ * Actualiza los datos personales del usuario autenticado (RF-PROF-002).
+ * La sesión determina qué perfil se modifica y RLS impide tocar perfiles ajenos.
+ */
+export async function actualizarPerfil(datos: { nombre: string; telefono: string }): Promise<void> {
+  const sesion = await obtenerSesion();
+  if (!sesion) {
+    throw new Error('No hay una sesión iniciada. Iniciá sesión nuevamente.');
   }
 
-  if (!data.user || data.user.id !== id) {
-    return null;
+  const nombre = datos.nombre.trim();
+  const telefono = datos.telefono.trim();
+
+  if (!nombre) throw new Error('El nombre es obligatorio.');
+  if (nombre.length > 100) throw new Error('El nombre no puede superar los 100 caracteres.');
+  if (telefono.length > 30) throw new Error('El teléfono no puede superar los 30 caracteres.');
+
+  const { data, error } = await supabase
+    .from('perfiles')
+    .update({ nombre, telefono: telefono || null })
+    .eq('id', sesion.user.id)
+    .select('id')
+    .maybeSingle();
+
+  if (error) lanzar(error, 'No se pudieron guardar los cambios del perfil');
+  if (!data) {
+    throw new Error('No se encontró tu perfil para actualizar. Iniciá sesión nuevamente e intentá otra vez.');
+  }
+}
+
+const EXTENSIONES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+const TAMANIO_MAXIMO = 5 * 1024 * 1024;
+const LIMITE_SUBIDA_MS = 20000;
+
+/** Convierte la imagen en base64 que entrega el selector a los bytes que se suben. */
+function base64ABytes(base64: string): Uint8Array {
+  const binario = atob(base64);
+  const bytes = new Uint8Array(binario.length);
+  for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+  return bytes;
+}
+
+/**
+ * Sube la foto del usuario autenticado al bucket `avatars` y guarda su URL en el perfil.
+ * Recibe la imagen en base64 porque en Android `fetch` no puede leer archivos locales.
+ */
+export async function actualizarFotoPerfil(base64: string, mimeType?: string | null): Promise<string> {
+  const sesion = await obtenerSesion();
+  if (!sesion) {
+    throw new Error('Iniciá sesión para cambiar tu foto de perfil.');
   }
 
-  return obtenerUsuarioActual();
+  const tipo = mimeType || 'image/jpeg';
+  const extension = EXTENSIONES[tipo];
+  if (!extension) {
+    throw new Error('La foto debe estar en formato JPG, PNG o WebP.');
+  }
+
+  const bytes = base64ABytes(base64);
+  if (bytes.byteLength > TAMANIO_MAXIMO) {
+    throw new Error('La foto no puede superar los 5 MB.');
+  }
+
+  // Cada usuario escribe solo en su carpeta: lo exigen las políticas del bucket.
+  const ruta = `${sesion.user.id}/avatar.${extension}`;
+
+  const { error: errorSubida } = await Promise.race([
+    supabase.storage.from('avatars').upload(ruta, bytes, { contentType: tipo, upsert: true }),
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('La subida tardó demasiado. Revisá la conexión e intentá nuevamente.')),
+        LIMITE_SUBIDA_MS,
+      ),
+    ),
+  ]);
+
+  if (errorSubida) lanzar(errorSubida, 'No se pudo subir la foto');
+
+  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(ruta);
+  // El parámetro evita que el celular muestre la foto anterior guardada en caché.
+  const url = `${urlData.publicUrl}?t=${Date.now()}`;
+
+  const { data, error } = await supabase
+    .from('perfiles')
+    .update({ avatar_url: url })
+    .eq('id', sesion.user.id)
+    .select('id')
+    .maybeSingle();
+
+  if (error) lanzar(error, 'No se pudo guardar la foto en tu perfil');
+  if (!data) throw new Error('No se encontró tu perfil para guardar la foto.');
+
+  return url;
 }

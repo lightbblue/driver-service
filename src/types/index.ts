@@ -7,17 +7,20 @@
  * resuelve una función o una vista, y la capa de servicios los sigue exponiendo igual.
  */
 
+export type RolUsuario = 'cliente' | 'mecanico' | 'admin';
+
+/**
+ * Estados del servicio (RF-STATE-001). `pendiente` es el estado inicial que la
+ * base ya usaba; equivale a "Solicitado" en el SRS.
+ */
 export type EstadoServicio =
   | 'pendiente'
-  | 'solicitado'
   | 'aceptado'
   | 'en_camino'
   | 'llegue'
   | 'trabajando'
   | 'finalizado'
   | 'cancelada';
-
-export type RolUsuario = 'cliente' | 'mecanico' | 'admin';
 
 /** Estadísticas del perfil. Derivadas: en E2 salen de una vista agregada. */
 export interface EstadisticasPerfil {
@@ -79,51 +82,56 @@ export interface CategoriaAveria {
   orden: number;
 }
 
-/** Objeto anidado que en E2 se aplana en columnas de `servicios`. */
+/** Columnas `latitud`, `longitud` y `direccion` de `solicitudes`. */
 export interface UbicacionServicio {
   latitud: number;
   longitud: number;
   direccion: string;
-  localidad: string | null;
-  referencia: string | null;
 }
 
-/** Fila de `servicio_estados`. */
+/** Tabla `historial_solicitudes`: bitácora de cambios de estado (RF-DATA-004). */
 export interface HitoServicio {
+  id: string;
+  estado_anterior: EstadoServicio | null;
   estado_nuevo: EstadoServicio;
-  ocurrido_en: string | null;
+  /** Usuario que hizo el cambio. */
+  actor_id: string | null;
+  ocurrido_en: string;
+  /** Columna `nota`: observación del cambio o motivo de la cancelación. */
   observacion: string | null;
 }
 
-/** Tabla `servicios`. */
+export type ActorCancelacion = 'cliente' | 'mecanico';
+
+/** Taller asignado (tabla `mecanicos`). */
+export interface MecanicoAsignado {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+}
+
+/** Tabla `solicitudes` con su categoría, su mecánico y su historial. */
 export interface Servicio {
   id: string;
+  /** Código legible generado por la base: RS-2026-0013 (RF-ASSIST-005). */
   codigo: string;
   cliente_id: string;
   mecanico_id: string | null;
-  categoria_codigo: string;
+  mecanico: MecanicoAsignado | null;
+  categoria_id: string | null;
   categoria_nombre: string;
+  categoria_icono: string | null;
   descripcion: string | null;
   ubicacion: UbicacionServicio;
   estado: EstadoServicio;
   eta_minutos: number | null;
+  motivo_cancelacion: string | null;
+  /** Derivado del actor del hito de cancelación. */
+  cancelado_por: ActorCancelacion | null;
   creado_en: string;
-  finalizado_en: string | null;
+  actualizado_en: string;
+  /** Ordenado del más antiguo al más reciente. */
   historial: HitoServicio[];
-}
-
-/** Datos mínimos del mecánico asignado, para la tarjeta del detalle. */
-export interface MecanicoAsignado {
-  id: string;
-  nombre: string;
-  localidad: string | null;
-  telefono: string | null;
-  imagen_url: string | null;
-}
-
-/** Solicitud con su mecánico asignado, para la pantalla de seguimiento. */
-export interface DetalleSolicitud extends Servicio {
-  mecanico: MecanicoAsignado | null;
 }
 
 /** Contenido editorial del Home. Sin tabla asociada: es contenido de la Entrega 1. */

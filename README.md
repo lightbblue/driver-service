@@ -83,6 +83,54 @@ Verificado en Android 10+ (`RNF-COMP-001`).
 
 ---
 
+## Supabase
+
+La app lee las credenciales de `.env` (no versionado):
+
+```
+EXPO_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co
+EXPO_PUBLIC_SUPABASE_KEY=<publishable / anon key>
+```
+
+### Puesta en marcha de la base
+
+Las migraciones se ajustan a las tablas que ya existen en Supabase (`solicitudes`, `historial_solicitudes`, `mecanicos`, `categorias_averia`, `perfiles`): solo agregan columnas, funciones y políticas, sin renombrar ni borrar nada.
+
+| Migración | Contenido | Requisitos |
+|---|---|---|
+| `…_solicitudes_estructura.sql` | Código `RS-AAAA-NNNN`, tiempo estimado, motivo de cancelación, estado anterior y actor en el historial, vínculo taller ↔ usuario | RF-ASSIST-005, RF-DATA-004 |
+| `…_solicitudes_estados.sql` | Máquina de estados, aceptación atómica, una solicitud activa por cliente, bitácora automática | RF-STATE-001..005, RF-MATCH-003/004, RN-002..005, RN-009, RN-010 |
+| `…_solicitudes_rls.sql` | Políticas RLS, privilegios y Realtime | RF-SEC-001, RN-001, RN-008 |
+
+1. Ejecutar en el **SQL Editor** cada archivo de `supabase/migrations/`, en orden. Son idempotentes.
+2. Comprobar el resultado con `npm run verificar:supabase` (solo lecturas).
+3. `supabase/verificacion.sql` lista columnas, restricciones, políticas RLS y triggers, para revisar el esquema desde el SQL Editor.
+
+### Seguimiento del servicio
+
+Los estados son `pendiente → aceptado → en_camino → llegue → trabajando → finalizado`, más `cancelada` hasta antes de iniciar el trabajo (RN-009). `pendiente` es el estado inicial que la base ya usaba ("Solicitado" en el SRS). Todo cambio pasa por `cambiar_estado_solicitud()`; un trigger valida la transición (RN-004) y registra en `historial_solicitudes` el estado anterior, el actor, la fecha y la `nota`. La app no puede modificar `solicitudes` directamente: los privilegios y la RLS lo impiden.
+
+Una cuenta es de mecánico cuando está vinculada a un taller de `mecanicos`:
+
+```sql
+update public.mecanicos
+set usuario_id = (select id from auth.users where email = 'mecanico@ejemplo.com'),
+    disponible = true
+where id = '<id del taller>';
+```
+
+Solo los mecánicos con `disponible = true` ven las solicitudes pendientes y pueden aceptarlas (RN-003).
+
+### Ubicación
+
+Al llegar al paso 2 de la solicitud se pide el permiso de ubicación, explicando para qué se usa (RNF-PRIV-002), y el mapa se centra en la posición GPS. El pin se puede arrastrar (o tocar el mapa) para corregir el punto, y la dirección se recalcula y se puede editar. Se guardan las coordenadas del pin. Sin permiso, la ubicación se marca a mano en el mapa.
+
+- **Web:** Leaflet. La geolocalización del navegador exige `https` o `localhost`.
+- **Android / iOS:** Leaflet dentro de un WebView. Funciona en Expo Go y no necesita clave de Google Maps.
+- Mapa: teselas de CARTO sobre datos de OpenStreetMap. Direcciones: geocodificador del sistema en el celular y Nominatim (OSM) en la web.
+
+---
+
 ## Estructura del proyecto
 
 ```
