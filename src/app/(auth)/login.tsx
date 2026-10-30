@@ -20,7 +20,7 @@ import {
   Pantalla,
   SeparadorO,
 } from '@/components/ui';
-import { supabase } from '@/lib/supabase';
+import { iniciarSesion as autenticar } from '@/services';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -43,45 +43,12 @@ export default function LoginScreen() {
     setCargando(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: correo.trim(),
-        password: contrasenia,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (!data.session || !data.user) {
-        throw new Error('No se pudo iniciar la sesión. Intentá nuevamente.');
-      }
-
-      console.log('[LOGIN] Sesión iniciada correctamente');
-
+      await autenticar(correo, contrasenia);
       router.replace('/inicio');
     } catch (error) {
-      console.error('[LOGIN] Error al iniciar sesión:', error);
-
-      const mensaje =
-        error instanceof Error ? error.message : '';
-
-      if (
-        mensaje.toLowerCase().includes('email not confirmed')
-      ) {
-        setErrorMensaje(
-          'Tu correo todavía no está confirmado. Revisá tu email.',
-        );
-      } else if (
-        mensaje.toLowerCase().includes('invalid login credentials')
-      ) {
-        setErrorMensaje(
-          'El correo o la contraseña son incorrectos.',
-        );
-      } else {
-        setErrorMensaje(
-          mensaje || 'No se pudo iniciar sesión. Intentá nuevamente.',
-        );
-      }
+      setErrorMensaje(
+        error instanceof Error ? error.message : 'No se pudo iniciar sesión. Intentá nuevamente.',
+      );
     } finally {
       setCargando(false);
     }
@@ -188,4 +155,3 @@ export default function LoginScreen() {
     </Pantalla>
   );
 }
-
