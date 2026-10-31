@@ -1,9 +1,10 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  BackHandler,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -96,13 +97,31 @@ export default function NuevaSolicitudScreen() {
 
   const esUltimoPaso = paso === PASOS.length;
 
-  const retroceder = () => {
+  const retroceder = useCallback(() => {
     if (paso > 1) {
-      setPaso(paso - 1);
+      setPaso((prev) => prev - 1);
     } else {
       router.back();
     }
-  };
+  }, [paso, router]);
+
+  /**
+   * RF-VIEW-006: Botón Atrás de Android vuelve al paso anterior del flujo de solicitud.
+   * - En pasos 2 a 4 vuelve al paso anterior conservando los datos cargados (CP-SOL-08).
+   * - En el paso 1 permite la salida coherente del flujo (CP-SOL-09).
+   */
+  useEffect(() => {
+    const alPresionarAtras = () => {
+      if (paso > 1) {
+        retroceder();
+        return true;
+      }
+      return false;
+    };
+
+    const suscripcion = BackHandler.addEventListener('hardwareBackPress', alPresionarAtras);
+    return () => suscripcion.remove();
+  }, [paso, retroceder]);
 
   const avanzar = async () => {
     if (paso === 1 && !categoriaElegida) {
