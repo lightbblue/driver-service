@@ -1,7 +1,14 @@
-export { iniciarSesion, registrarCuenta, type DatosRegistro } from './auth';
+export { iniciarSesion, iniciarSesionConGoogle, registrarCuenta, type DatosRegistro } from './auth';
 export { listarCategoriasAveria } from './categorias';
 export { listarConsejos, listarPromociones } from './contenido';
-export { listarMecanicos, listarMecanicosDestacados, obtenerMecanico } from './mecanicos';
+export {
+  actualizarDisponibilidadMecanico,
+  listarMecanicos,
+  listarMecanicosDestacados,
+  obtenerMecanico,
+  obtenerMecanicoActual,
+} from './mecanicos';
+export { obtenerPago, registrarPago } from './pagos';
 export {
   cerrarSesion,
   escucharSesion,

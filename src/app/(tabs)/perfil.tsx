@@ -1,8 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 
 import { FilaEstadisticas } from '@/components/perfil/fila-estadisticas';
 import { FilaMenu, type ItemMenu } from '@/components/perfil/fila-menu';
@@ -10,8 +18,10 @@ import { Avatar, Boton, Cargando, FondoMarca, LogoRider, Pantalla } from '@/comp
 import { useRecurso } from '@/hooks/use-recurso';
 import { COLORES } from '@/lib/tema';
 import {
+  actualizarDisponibilidadMecanico,
   actualizarFotoPerfil,
   cerrarSesion,
+  obtenerMecanicoActual,
   obtenerUsuarioActual,
 } from '@/services';
 import type { Perfil } from '@/types';
@@ -38,9 +48,45 @@ export default function PerfilScreen() {
   const { datos: usuario, cargando, recargar } = useRecurso<Perfil | null>(obtenerUsuarioActual, null);
   const [avatarLocal, setAvatarLocal] = useState<string | null>(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [disponible, setDisponible] = useState(true);
+  const [cambiandoDisponibilidad, setCambiandoDisponibilidad] = useState(false);
 
-  // Al volver de "Editar perfil" se vuelven a leer los datos para mostrar los cambios.
-  useFocusEffect(recargar);
+  // Al volver a enfocar la pantalla se recargan los datos del perfil
+  useFocusEffect(
+    useCallback(() => {
+      recargar();
+    }, [recargar]),
+  );
+
+  // Consulta la disponibilidad real de la ficha del mecánico (RF-PROF-003)
+  useEffect(() => {
+    if (usuario?.rol === 'mecanico') {
+      obtenerMecanicoActual()
+        .then((mecanico) => {
+          if (mecanico) setDisponible(mecanico.disponible);
+        })
+        .catch(() => {});
+    }
+  }, [usuario?.rol]);
+
+  const toggleDisponibilidad = async (nuevoValor: boolean) => {
+    if (cambiandoDisponibilidad) return;
+    setCambiandoDisponibilidad(true);
+    const anterior = disponible;
+    setDisponible(nuevoValor);
+
+    try {
+      await actualizarDisponibilidadMecanico(nuevoValor);
+    } catch (error) {
+      setDisponible(anterior);
+      Alert.alert(
+        'No se pudo actualizar',
+        error instanceof Error ? error.message : 'Error al cambiar la disponibilidad.',
+      );
+    } finally {
+      setCambiandoDisponibilidad(false);
+    }
+  };
 
   const localidad = [usuario?.localidad, usuario?.provincia].filter(Boolean).join(', ');
 
@@ -53,7 +99,6 @@ export default function PerfilScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
-        // En Android no se puede leer el archivo local con fetch: la imagen se pide ya codificada.
         base64: true,
       });
 
@@ -163,6 +208,39 @@ export default function PerfilScreen() {
         </View>
 
         <View className="gap-3 px-4 pt-4">
+          {/* Disponibilidad del mecánico (RF-PROF-003, RN-003, CP-DIS-01..02) */}
+          {usuario?.rol === 'mecanico' ? (
+            <View testID="tarjeta-disponibilidad" className="rounded-xl border border-borde bg-superficie p-4">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1 pr-3">
+                  <View className="flex-row items-center gap-2">
+                    <View
+                      className={`h-2.5 w-2.5 rounded-full ${
+                        disponible ? 'bg-exito' : 'bg-peligro'
+                      }`}
+                    />
+                    <Text className="text-base font-bold text-texto">
+                      {disponible ? 'Disponible para servicios' : 'No disponible'}
+                    </Text>
+                  </View>
+                  <Text className="mt-1 text-chico text-texto-tenue">
+                    {disponible
+                      ? 'Estás visible para recibir solicitudes en la bandeja.'
+                      : 'No recibirás nuevas solicitudes hasta reactivarte.'}
+                  </Text>
+                </View>
+                <Switch
+                  testID="switch-disponibilidad"
+                  value={disponible}
+                  onValueChange={toggleDisponibilidad}
+                  disabled={cambiandoDisponibilidad}
+                  trackColor={{ false: COLORES.borde, true: COLORES.acento }}
+                  thumbColor={disponible ? COLORES.textoInverso : COLORES.textoTenue}
+                />
+              </View>
+            </View>
+          ) : null}
+
           <FilaEstadisticas estadisticas={usuario?.estadisticas ?? null} />
 
           <View className="gap-2.5 pt-1">
