@@ -128,6 +128,8 @@ export interface Servicio {
   motivo_cancelacion: string | null;
   /** Derivado del actor del hito de cancelación. */
   cancelado_por: ActorCancelacion | null;
+  /** Monto final del servicio en pesos (RF-QUOTE-001, RN-014). */
+  monto_final: number | null;
   creado_en: string;
   actualizado_en: string;
   /** Ordenado del más antiguo al más reciente. */

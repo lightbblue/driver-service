@@ -44,7 +44,7 @@ export function siguienteEstadoMecanico(estado: EstadoServicio): EstadoServicio 
 
 const COLUMNAS = `
   id, codigo, usuario_id, mecanico_id, categoria_id, descripcion,
-  direccion, latitud, longitud, estado, eta_minutos, motivo_cancelacion,
+  direccion, latitud, longitud, estado, eta_minutos, motivo_cancelacion, monto_final,
   creado_en, actualizado_en,
   categoria:categorias_averia ( nombre, icono ),
   mecanico:mecanicos ( id, nombre, telefono ),
@@ -64,6 +64,7 @@ type FilaSolicitud = {
   estado: EstadoServicio;
   eta_minutos: number | null;
   motivo_cancelacion: string | null;
+  monto_final: number | null;
   creado_en: string;
   actualizado_en: string;
   categoria: { nombre: string; icono: string | null } | null;
@@ -119,6 +120,7 @@ function aServicio(fila: FilaSolicitud): Servicio {
     eta_minutos: fila.eta_minutos,
     motivo_cancelacion: fila.motivo_cancelacion,
     cancelado_por: canceladoPor,
+    monto_final: fila.monto_final != null ? Number(fila.monto_final) : null,
     creado_en: fila.creado_en,
     actualizado_en: fila.actualizado_en,
     historial,
@@ -231,16 +233,52 @@ export async function crearSolicitud(datos: {
 export async function cambiarEstadoSolicitud(
   id: string,
   estado: EstadoServicio,
-  opciones: { observacion?: string; etaMinutos?: number | null } = {},
+  opciones: {
+    observacion?: string;
+    etaMinutos?: number | null;
+    montoFinal?: number | null;
+  } = {},
 ): Promise<void> {
+  // RN-014 / RF-QUOTE-001: Validación previa en cliente para 'finalizado'
+  if (estado === 'finalizado') {
+    if (
+      opciones.montoFinal === undefined ||
+      opciones.montoFinal === null ||
+      typeof opciones.montoFinal !== 'number' ||
+      isNaN(opciones.montoFinal) ||
+      opciones.montoFinal <= 0
+    ) {
+      throw new Error('El monto final debe ser mayor a cero.');
+    }
+  }
+
   const { error } = await supabase.rpc('cambiar_estado_solicitud', {
     p_solicitud_id: id,
     p_estado: estado,
     p_nota: opciones.observacion?.trim() || null,
     p_eta_minutos: opciones.etaMinutos ?? null,
+    p_monto_final: opciones.montoFinal ?? null,
   });
 
   if (error) lanzar(error, 'No se pudo actualizar la solicitud');
+}
+
+/**
+ * Finaliza el servicio asociando el monto final en pesos (RF-STATE-005, RF-QUOTE-001, RN-014).
+ * Solo el mecánico asignado puede ejecutarlo.
+ */
+export async function finalizarServicio(
+  id: string,
+  montoFinal: number,
+  nota?: string,
+): Promise<void> {
+  if (typeof montoFinal !== 'number' || isNaN(montoFinal) || montoFinal <= 0) {
+    throw new Error('El monto final debe ser mayor a cero.');
+  }
+  return cambiarEstadoSolicitud(id, 'finalizado', {
+    montoFinal,
+    observacion: nota,
+  });
 }
 
 export async function cancelarSolicitud(id: string, motivo: string): Promise<void> {

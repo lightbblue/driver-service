@@ -21,6 +21,7 @@ import {
   cambiarEstadoSolicitud,
   cancelarSolicitud,
   esCancelable,
+  finalizarServicio,
   obtenerMecanicoIdActual,
   obtenerSolicitud,
   obtenerUsuarioId,
@@ -77,6 +78,7 @@ export default function SeguimientoScreen() {
   useEffect(() => suscribirseASolicitudes(recargar, id), [id, recargar]);
 
   const [observacion, setObservacion] = useState('');
+  const [montoFinal, setMontoFinal] = useState('');
   const [eta, setEta] = useState<number | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [motivo, setMotivo] = useState('');
@@ -120,6 +122,21 @@ export default function SeguimientoScreen() {
   };
 
   const avanzarEstado = () => {
+    if (proximo === 'finalizado') {
+      const parsed = parseFloat(montoFinal.replace(',', '.'));
+      if (isNaN(parsed) || parsed <= 0) {
+        Alert.alert('Monto inválido', 'El monto final debe ser mayor a cero.');
+        return;
+      }
+      void ejecutar(
+        () => finalizarServicio(servicio?.id ?? '', parsed, observacion),
+        () => {
+          setObservacion('');
+          setMontoFinal('');
+        },
+      );
+      return;
+    }
     if (!servicio || !proximo) return;
     void ejecutar(
       () =>
@@ -254,6 +271,15 @@ export default function SeguimientoScreen() {
                 </Pressable>
               </View>
 
+              {servicio.monto_final != null ? (
+                <View className="flex-row items-center justify-between rounded-campo bg-superficie-alta p-3">
+                  <Text className="text-sm font-semibold text-texto-tenue">Monto final</Text>
+                  <Text testID="texto-monto-final" className="text-base font-extrabold text-acento">
+                    ${servicio.monto_final.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              ) : null}
+
               {servicio.descripcion ? (
                 <Text className="text-chico text-texto-tenue">{servicio.descripcion}</Text>
               ) : null}
@@ -291,6 +317,17 @@ export default function SeguimientoScreen() {
                       ))}
                     </View>
                   </View>
+                ) : null}
+
+                {proximo === 'finalizado' ? (
+                  <CampoTexto
+                    testID="campo-monto-final"
+                    etiqueta="Monto final del servicio (en pesos)"
+                    placeholder="Ej: 15000"
+                    keyboardType="numeric"
+                    value={montoFinal}
+                    onChangeText={setMontoFinal}
+                  />
                 ) : null}
 
                 <CampoTexto
