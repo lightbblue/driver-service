@@ -4,8 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
-import { FilaEstadisticas } from '@/components/perfil/fila-estadisticas';
-import { FilaMenu, type ItemMenu } from '@/components/perfil/fila-menu';
+import { FilaEstadisticas, FilaMenu, type ItemMenu, ModalCerrarSesion } from '@/components/perfil';
 import { Avatar, Boton, Cargando, FondoMarca, LogoRider, Pantalla } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
 import { COLORES } from '@/lib/tema';
@@ -38,11 +37,29 @@ export default function PerfilScreen() {
   const { datos: usuario, cargando, recargar } = useRecurso<Perfil | null>(obtenerUsuarioActual, null);
   const [avatarLocal, setAvatarLocal] = useState<string | null>(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [mostrarModalCierre, setMostrarModalCierre] = useState(false);
+  const [cerrandoSesion, setCerrandoSesion] = useState(false);
 
   // Al volver de "Editar perfil" se vuelven a leer los datos para mostrar los cambios.
   useFocusEffect(recargar);
 
   const localidad = [usuario?.localidad, usuario?.provincia].filter(Boolean).join(', ');
+
+  async function handleConfirmarCierre() {
+    setCerrandoSesion(true);
+    try {
+      await cerrarSesion();
+      setMostrarModalCierre(false);
+      router.replace('/login');
+    } catch (error) {
+      Alert.alert(
+        'No se pudo cerrar la sesión',
+        error instanceof Error ? error.message : 'Ocurrió un error inesperado al cerrar sesión.',
+      );
+    } finally {
+      setCerrandoSesion(false);
+    }
+  }
 
   async function cambiarFoto() {
     if (subiendoFoto) return;
@@ -93,6 +110,7 @@ export default function PerfilScreen() {
                   testID="btn-notificaciones"
                   accessibilityRole="button"
                   accessibilityLabel="Notificaciones"
+                  accessibilityHint="Abre la lista de avisos y notificaciones del sistema"
                   hitSlop={8}
                   className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie"
                 >
@@ -103,6 +121,7 @@ export default function PerfilScreen() {
                   testID="btn-configuracion"
                   accessibilityRole="button"
                   accessibilityLabel="Configuración"
+                  accessibilityHint="Abre los ajustes y preferencias de la cuenta"
                   hitSlop={8}
                   className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie"
                 >
@@ -123,6 +142,7 @@ export default function PerfilScreen() {
                     testID="btn-cambiar-foto"
                     accessibilityRole="button"
                     accessibilityLabel="Cambiar foto de perfil"
+                    accessibilityHint="Abre la galería de imágenes para actualizar tu avatar"
                     disabled={subiendoFoto}
                     onPress={cambiarFoto}
                     className="absolute -bottom-1 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-fondo bg-superficie-alta active:bg-superficie"
@@ -153,6 +173,8 @@ export default function PerfilScreen() {
                     titulo="Editar perfil"
                     variante="fantasma"
                     icono="create-outline"
+                    accessibilityLabel="Editar perfil"
+                    accessibilityHint="Permite modificar tu nombre, teléfono y datos personales"
                     className="mt-1 min-h-[40px] self-start px-4 py-2"
                     onPress={() => router.push('/editar-perfil')}
                   />
@@ -176,17 +198,21 @@ export default function PerfilScreen() {
             titulo="Cerrar sesión"
             variante="peligro"
             icono="log-out-outline"
+            accessibilityLabel="Cerrar sesión"
+            accessibilityHint="Despliega la confirmación para cerrar tu sesión actual"
             className="mt-2"
-            onPress={() =>
-              cerrarSesion()
-                .then(() => router.replace('/login'))
-                .catch((error: Error) =>
-                  Alert.alert('No se pudo cerrar la sesión', error.message),
-                )
-            }
+            onPress={() => setMostrarModalCierre(true)}
           />
         </View>
       </ScrollView>
+
+      {/* Modal de confirmación para evitar cierres accidentales (RF-AUTH-005) */}
+      <ModalCerrarSesion
+        visible={mostrarModalCierre}
+        cargando={cerrandoSesion}
+        onCancelar={() => setMostrarModalCierre(false)}
+        onConfirmar={handleConfirmarCierre}
+      />
     </Pantalla>
   );
 }

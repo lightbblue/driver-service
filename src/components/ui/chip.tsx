@@ -7,15 +7,27 @@ type ChipProps = {
   activo?: boolean;
   onPress?: () => void;
   className?: string;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 };
 
-/** Etiqueta compacta: especialidades, filtros, estados. */
-export function Chip({ texto, activo = false, onPress, className }: ChipProps) {
+/** Etiqueta compacta: especialidades, filtros, estados (RF-UX-007). */
+export function Chip({
+  texto,
+  activo = false,
+  onPress,
+  className,
+  accessibilityLabel,
+  accessibilityHint,
+}: ChipProps) {
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : 'text'}
+      accessibilityLabel={accessibilityLabel ?? texto}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={onPress ? { selected: activo } : undefined}
       className={cn(
         'rounded-full border px-3 py-1.5',
         activo ? 'border-acento bg-acento/15' : 'border-borde bg-superficie-alta',

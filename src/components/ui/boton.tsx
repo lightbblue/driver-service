@@ -15,6 +15,8 @@ type BotonProps = {
   deshabilitado?: boolean;
   className?: string;
   testID?: string;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 };
 
 const CONTENEDOR: Record<Variante, string> = {
@@ -38,7 +40,7 @@ const ICONO: Record<Variante, string> = {
   peligro: '#EF4444',
 };
 
-/** Botón del sistema de diseño. Siempre responde visualmente al toque (RNF-UX-004). */
+/** Botón del sistema de diseño. Siempre responde visualmente al toque (RNF-UX-004) y cumple con accesibilidad (RF-UX-007). */
 export function Boton({
   titulo,
   onPress,
@@ -49,12 +51,15 @@ export function Boton({
   deshabilitado = false,
   className,
   testID,
+  accessibilityLabel,
+  accessibilityHint,
 }: BotonProps) {
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={titulo}
+      accessibilityLabel={accessibilityLabel ?? titulo}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: deshabilitado }}
       disabled={deshabilitado || cargando}
       onPress={onPress}
