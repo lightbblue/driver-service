@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { usePathname, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
+import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,57 +21,20 @@ const PESTANIAS: Pestania[] = [
   { nombre: 'perfil', etiqueta: 'Perfil', icono: 'person-outline', iconoActivo: 'person' },
 ];
 
-/** Mapeo de rutas Expo Router para cada pestaña. */
-const RUTAS_PESTANIA: Record<string, string> = {
-  inicio: '/(tabs)/inicio',
-  mapa: '/(tabs)/mapa',
-  solicitudes: '/(tabs)/solicitudes',
-  perfil: '/(tabs)/perfil',
-};
-
-export type BarraInferiorProps = {
-  state?: {
-    index: number;
-    routes: Array<{ name: string; key?: string }>;
-  };
-  navigation?: any;
-  descriptors?: any;
-};
-
 /**
  * Barra de navegación inferior con el botón SOS central (RF-VIEW-011).
- * Usa exclusivamente router.navigate() de Expo Router para cambiar de pestaña,
- * evitando el error "NAVIGATE not handled by any navigator" que ocurre cuando
- * se usa el objeto navigation de React Navigation con rutas de tabs.
+ * El SOS no es una pestaña: es un acceso directo al flujo de solicitud.
  */
-export function BarraInferior({ state }: BarraInferiorProps = {}) {
+export function BarraInferior({ state, navigateToTab }: BottomTabBarProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const { bottom } = useSafeAreaInsets();
 
-  // Resolver la pestaña activa de forma segura
-  let rutaActiva = state?.routes && state.index != null ? state.routes[state.index]?.name : undefined;
+  const rutaActiva = state.routes[state.index]?.name;
 
-  if (!rutaActiva && pathname) {
-    if (pathname.includes('/mapa')) {
-      rutaActiva = 'mapa';
-    } else if (pathname.includes('/solicitudes')) {
-      rutaActiva = 'solicitudes';
-    } else if (pathname.includes('/perfil')) {
-      rutaActiva = 'perfil';
-    } else {
-      rutaActiva = 'inicio';
-    }
-  }
-
-  /**
-   * Navegar a una pestaña usando Expo Router (estrategia canónica).
-   * router.navigate con la ruta completa `/(tabs)/xxx` garantiza que el
-   * tab navigator maneje la acción correctamente.
-   */
   const irA = (nombre: string) => {
-    const rutaDestino = RUTAS_PESTANIA[nombre] ?? `/(tabs)/${nombre}`;
-    router.navigate(rutaDestino as any);
+    const destino = state.routes.find((r) => r.name === nombre);
+    if (!destino) return;
+    navigateToTab(destino.key);
   };
 
   const renderPestania = (pestania: Pestania) => {
@@ -82,8 +46,7 @@ export function BarraInferior({ state }: BarraInferiorProps = {}) {
         testID={`pestania-${pestania.nombre}`}
         accessibilityRole="tab"
         accessibilityState={{ selected: activa }}
-        accessibilityLabel={`Pestaña ${pestania.etiqueta}`}
-        accessibilityHint={`Navega a la pantalla de ${pestania.etiqueta}`}
+        accessibilityLabel={pestania.etiqueta}
         onPress={() => irA(pestania.nombre)}
         className="min-h-[44px] flex-1 items-center justify-center gap-1 py-2 active:opacity-60">
         <Ionicons
@@ -112,8 +75,7 @@ export function BarraInferior({ state }: BarraInferiorProps = {}) {
         <Pressable
           testID="btn-sos"
           accessibilityRole="button"
-          accessibilityLabel="SOS: solicitar asistencia mecánica de emergencia"
-          accessibilityHint="Abre el formulario para solicitar asistencia técnica inmediata"
+          accessibilityLabel="SOS: solicitar asistencia"
           onPress={() => router.push('/solicitud/nueva')}
           className="-mt-8 h-16 w-16 items-center justify-center rounded-full border-4 border-fondo bg-acento active:bg-acento-oscuro">
           <Ionicons name="warning" size={26} color="#0B0B0D" />

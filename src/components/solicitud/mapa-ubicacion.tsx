@@ -74,7 +74,8 @@ export function MapaUbicacion({
   onInteraccion,
   altura = ALTURA_MAPA,
 }: MapaUbicacionProps) {
-  const webViewRef = useRef<any>(null);
+  // El genérico explícito evita que los tipos de webview 14 resuelvan las props a `never`.
+  const webViewRef = useRef<WebView<object>>(null);
   /** Última posición que salió del propio mapa: no hace falta recentrarlo. */
   const ultimaRef = useRef<Coordenadas | null>(null);
   const [listo, setListo] = useState(false);
@@ -116,7 +117,7 @@ export function MapaUbicacion({
       onTouchStart={() => onInteraccion?.(true)}
       onTouchEnd={() => onInteraccion?.(false)}
       onTouchCancel={() => onInteraccion?.(false)}>
-      <WebView
+      <WebView<object>
         ref={webViewRef}
         originWhitelist={['*']}
         source={{ html: HTML_MAPA, baseUrl: 'https://riderservice.app/' }}

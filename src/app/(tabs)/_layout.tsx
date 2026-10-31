@@ -1,4 +1,4 @@
-import Tabs from 'expo-router/js-tabs';
+import { Tabs } from 'expo-router/js-tabs';
 
 import { BarraInferior } from '@/components/navegacion/barra-inferior';
 import { RequiereSesion } from '@/components/navegacion/requiere-sesion';
