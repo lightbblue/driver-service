@@ -1,3 +1,8 @@
+import Constants from 'expo-constants';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
+
 import { supabase } from '@/lib/supabase';
 import type { RolUsuario } from '@/types';
 
@@ -40,6 +45,63 @@ export async function iniciarSesion(email: string, password: string): Promise<vo
   if (!data.session) {
     throw new Error('No se pudo iniciar la sesión. Intentá nuevamente.');
   }
+}
+
+/**
+ * Dirección a la que Google (vía Supabase) devuelve al usuario en el celular.
+ * - En desarrollo, Expo Go solo se abre con `exp://<ip>:8081/--/`. `Linking.createURL`
+ *   puede devolver `riderservice:///`, que en Expo Go no abre nada y deja el navegador cargando.
+ * - En la app instalada se usa el esquema propio, `riderservice:///`.
+ * Las dos están permitidas en Supabase (Redirect URLs: `exp://**` y `riderservice://**`).
+ */
+function urlDeVueltaGoogle(): string {
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (__DEV__ && hostUri) return `exp://${hostUri.replace(/\/$/, '')}/--/`;
+  return Linking.createURL('/');
+}
+
+/**
+ * Inicia sesión con Google mediante OAuth y PKCE (RF-AUTH-007).
+ * La cuenta nueva queda con rol cliente: el trigger nunca crea un mecánico desde Google (RN-015).
+ *
+ * - Celular: abre Google en el navegador del sistema y, al volver, canjea el código por la sesión.
+ *   Devuelve `false` si el usuario cerró el navegador sin elegir una cuenta.
+ * - Web: redirige la página a Google; a la vuelta, supabase-js toma el código de la URL solo.
+ */
+export async function iniciarSesionConGoogle(): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) throw new Error('No se pudo iniciar sesión con Google. Intentá nuevamente.');
+    return true;
+  }
+
+  const redirectTo = urlDeVueltaGoogle();
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo, skipBrowserRedirect: true },
+  });
+  if (error || !data.url) {
+    throw new Error('No se pudo iniciar sesión con Google. Intentá nuevamente.');
+  }
+
+  const resultado = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  if (resultado.type !== 'success') return false;
+
+  const { queryParams } = Linking.parse(resultado.url);
+  const codigo = queryParams?.code;
+  if (typeof codigo !== 'string') {
+    throw new Error('Google no devolvió la autorización. Intentá nuevamente.');
+  }
+
+  const { error: errorCanje } = await supabase.auth.exchangeCodeForSession(codigo);
+  if (errorCanje) {
+    throw new Error('No se pudo completar el inicio de sesión con Google.');
+  }
+  return true;
 }
 
 /**
