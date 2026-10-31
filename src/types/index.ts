@@ -103,6 +103,22 @@ export interface HitoServicio {
 
 export type ActorCancelacion = 'cliente' | 'mecanico';
 
+export type EstadoPago = 'pendiente' | 'pagado';
+
+/** Tabla `pagos`: registro creado y validado por la base de datos. */
+export interface Pago {
+  id: string;
+  solicitud_id: string;
+  cliente_id: string;
+  mecanico_id: string;
+  monto: number;
+  comision: number;
+  neto_mecanico: number;
+  medio: 'simulado';
+  estado: 'aprobado';
+  creado_en: string;
+}
+
 /** Taller asignado (tabla `mecanicos`). */
 export interface MecanicoAsignado {
   id: string;
@@ -125,9 +141,12 @@ export interface Servicio {
   ubicacion: UbicacionServicio;
   estado: EstadoServicio;
   eta_minutos: number | null;
+  monto_final: number | null;
   motivo_cancelacion: string | null;
   /** Derivado del actor del hito de cancelación. */
   cancelado_por: ActorCancelacion | null;
+  estado_pago?: EstadoPago;
+  pago?: Pago | null;
   creado_en: string;
   actualizado_en: string;
   /** Ordenado del más antiguo al más reciente. */

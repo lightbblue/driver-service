@@ -37,6 +37,15 @@ export function TarjetaSolicitud({ servicio, onPress }: { servicio: Servicio; on
       </View>
 
       <DistintivoEstado estado={servicio.estado} />
+      {servicio.estado === 'finalizado' ? (
+        <Text
+          testID={`estado-pago-${servicio.estado_pago ?? 'pendiente'}`}
+          className={`text-chico font-semibold ${
+            servicio.estado_pago === 'pagado' ? 'text-exito' : 'text-acento'
+          }`}>
+          {servicio.estado_pago === 'pagado' ? 'Pagado' : 'Pendiente de pago'}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }

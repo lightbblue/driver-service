@@ -139,7 +139,7 @@ Los identificadores son **inmutables**:
 | 7 | Solicitud confirmada | `/solicitud/confirmada` | RF-VIEW-006 | MUST | ✅ |
 | 8 | Seguimiento de solicitud | `/solicitud/[id]` | RF-VIEW-008 | MUST (modificado v4) | ✅ |
 | 9 | Mis solicitudes / Mis servicios | `/(tabs)/solicitudes` | RF-VIEW-009 | MUST (modificado v4) | ✅ |
-| 10 | Pago del servicio | `/solicitud/pago` | RF-VIEW-014 (nuevo v4) | MUST | ⏳ |
+| 10 | Pago del servicio | `/solicitud/pago` | RF-VIEW-014 (nuevo v4) | MUST | 🟡 |
 | 11 | Mecánicos cerca tuyo | `/(tabs)/mapa` | RF-VIEW-007 | SHOULD | ⏳ |
 | 12 | Detalle de mecánico | `/mecanico/[id]` | RF-VIEW-010 | SHOULD | ⏳ |
 | 13 | Mis ganancias (mecánico) | `/ganancias` | RF-VIEW-015 (nuevo v4) | SHOULD | ⏳ |
@@ -169,7 +169,7 @@ Una pantalla está terminada cuando:
 | RF-VIEW-002 | Inicio de sesión | MUST | ✅ | Correo y contraseña reales. El botón de Google pasa a ser funcional (RF-AUTH-007). |
 | RF-VIEW-003 | Registro con variantes Usuario y Mecánico | MUST | ✅ | La variante Mecánico incluye taller, ubicación, especialidades y descripción. |
 | RF-VIEW-004 | Inicio | MUST | ✅ | Saludo con el perfil real; mecánicos destacados desde la base; consejos y promociones desde JSON. |
-| RF-VIEW-005 | Perfil | MUST | 🟡 | Datos y foto reales. Pendiente: las estadísticas se muestran en cero. |
+| RF-VIEW-005 | Perfil | MUST | ✅ | Datos, foto y estadísticas reales; la calificación queda como "—" hasta implementar reseñas. |
 | RF-VIEW-006 | Flujo de solicitud en 4 pasos | MUST | 🟡 | Funcional, con GPS. Pendiente: el botón Atrás de Android debe volver al paso anterior. |
 | RF-VIEW-007 | Mecánicos cerca tuyo | SHOULD | ⏳ | Mapa con marcadores, distancia, filtro por especialidad y botón "Ver perfil". |
 | RF-VIEW-008 | Seguimiento de solicitud | MUST (modificado v4) | ✅ | Estado, línea de tiempo de 6 estados, mapa, mecánico, contacto y cancelación. |
@@ -178,7 +178,7 @@ Una pantalla está terminada cuando:
 | RF-VIEW-011 | Estructura de navegación con botón SOS | MUST | 🟡 | Pestaña Mapa en "Próximamente" hasta que se haga RF-VIEW-007. |
 | RF-VIEW-012 | Contenido desde la capa de servicios | MUST (modificado v4) | ✅ | Datos operativos desde Supabase; contenido editorial desde JSON. Ninguna vista accede a Supabase ni a un JSON directamente. |
 | RF-VIEW-013 | Editar perfil (nuevo v4) | MUST | ✅ | Nombre y teléfono con validación. |
-| RF-VIEW-014 | Pago del servicio (nuevo v4) | MUST | ⏳ | Ver 5.9. |
+| RF-VIEW-014 | Pago del servicio (nuevo v4) | MUST | 🟡 | Pantalla y confirmación implementadas; falta aplicar la migración `monto_y_pagos`. |
 | RF-VIEW-015 | Mis ganancias del mecánico (nuevo v4) | SHOULD | ⏳ | Ver RF-PAY-004. |
 
 ### 5.2 Autenticación y sesión
@@ -261,7 +261,7 @@ pendiente → aceptado → en_camino → llegue → trabajando → finalizado
 | RF-STATE-002 | → En camino (solo el mecánico asignado) | MUST | ✅ |
 | RF-STATE-003 | → Llegué | MUST | ✅ |
 | RF-STATE-004 | → Trabajando | MUST | ✅ |
-| RF-STATE-005 | → Finalizado (modificado v4: requiere cargar el monto final, RF-QUOTE-001) | MUST | 🟡 |
+| RF-STATE-005 | → Finalizado (modificado v4: requiere cargar el monto final, RF-QUOTE-001) | MUST | 🟡 | Implementado; requiere aplicar la migración `monto_y_pagos`. |
 
 ### 5.7 Seguimiento
 
@@ -284,12 +284,12 @@ pendiente → aceptado → en_camino → llegue → trabajando → finalizado
 
 | ID | Requisito | Prioridad | Estado | Descripción |
 |---|---|---|---|---|
-| RF-QUOTE-001 | Monto final del servicio (modificado v4) | MUST | ⏳ | Al pasar a *finalizado*, el mecánico carga el monto final en pesos, mayor que cero. Queda asociado a la solicitud. |
-| RF-QUOTE-002 | Consultar el monto | MUST | ⏳ | El cliente ve el monto en el seguimiento y en la pantalla de pago. |
+| RF-QUOTE-001 | Monto final del servicio (modificado v4) | MUST | 🟡 | Formulario y validación en app y base; requiere aplicar la migración `monto_y_pagos`. |
+| RF-QUOTE-002 | Consultar el monto | MUST | 🟡 | Visible en seguimiento, lista y pantalla de pago; requiere aplicar la migración `monto_y_pagos`. |
 | RF-QUOTE-003 | Presupuesto con desglose y aceptación previa | WON'T | — | Desglose en mano de obra, repuestos y tasa; con versiones. Futuro. |
-| RF-PAY-001 | Pago simulado del servicio (nuevo v4) | MUST | ⏳ | Ver detalle abajo. |
-| RF-PAY-002 | Registro del pago con comisión (nuevo v4) | MUST | ⏳ | Ver detalle abajo. |
-| RF-PAY-003 | Estado de pago visible (nuevo v4) | MUST | ⏳ | Mis solicitudes y el seguimiento muestran "Pendiente de pago" o "Pagado". |
+| RF-PAY-001 | Pago simulado del servicio (nuevo v4) | MUST | 🟡 | Pantalla y confirmación implementadas; requiere aplicar la migración `monto_y_pagos`. |
+| RF-PAY-002 | Registro del pago con comisión (nuevo v4) | MUST | 🟡 | Función transaccional en base implementada; requiere aplicar y probar la migración. |
+| RF-PAY-003 | Estado de pago visible (nuevo v4) | MUST | 🟡 | Estado visible en lista y seguimiento; requiere aplicar la migración `monto_y_pagos`. |
 | RF-PAY-004 | Ganancias del mecánico (nuevo v4) | SHOULD | ⏳ | El mecánico ve sus servicios cobrados, el neto de cada uno (90 %) y el total a liquidar. |
 | RF-PAY-005 | Integración con Mercado Pago (nuevo v4) | WON'T | — | Checkout Pro en modo de prueba, con Edge Functions y webhook. Futuro. |
 | RF-PAY-006 | Pago dividido marketplace (nuevo v4) | WON'T | — | `marketplace_fee` con la cuenta del mecánico vinculada por OAuth. Futuro. |
@@ -362,7 +362,7 @@ con un cálculo de la app. La función:
 | RNF-SEC-002 | Autenticación segura | MUST | ✅ | Supabase Auth; la contraseña nunca se guarda en el dispositivo. |
 | RNF-SEC-003 | Autorización por políticas | MUST | ✅ | RLS en todas las tablas con políticas explícitas. |
 | RNF-SEC-004 | Seguridad de archivos | MUST | ✅ | Escritura solo en la carpeta propia. |
-| RNF-SEC-005 | Montos calculados en el servidor (nuevo v4) | MUST | ⏳ | La comisión y el neto los calcula la base; la app no puede enviarlos ni modificarlos. |
+| RNF-SEC-005 | Montos calculados en el servidor (nuevo v4) | MUST | 🟡 | La migración calcula y protege comisión y neto en la base; falta aplicarla y probarla. |
 | RNF-MAIN-001 | Control de versiones | MUST | ✅ | `main` siempre ejecutable. |
 | RNF-MAIN-002 | Integración por Pull Request con revisión | MUST | ✅ | |
 | RNF-MAIN-003 | Modularidad | MUST | ✅ | `/app`, `/components`, `/services`, `/types`, `/data`, `/lib`, `/hooks`. Solo `/services` accede a datos. |
@@ -376,7 +376,7 @@ con un cálculo de la app. La función:
 | RNF-REL-002 | Manejo de errores de operación | MUST | ✅ | Una operación fallida nunca se informa como exitosa. |
 | RNF-REL-003 | Persistencia confiable | MUST | ✅ | |
 | RNF-TRACE-001 a 003 | Trazabilidad | MUST | ✅ | Los commits y PR referencian el ID del requisito. |
-| RNF-TEST-002 | Datos de prueba | MUST | 🟡 | Pendiente: más mecánicos de ejemplo en la base. |
+| RNF-TEST-002 | Datos de prueba | MUST | ✅ | Migración idempotente con mecánicos de ejemplo en distintas ubicaciones y especialidades, incluido uno no disponible. |
 | RNF-TEST-003 | Estados determinísticos | MUST | ✅ | `scripts/verificar-supabase.mjs`. |
 | RNF-PRIV-001 | Minimización de datos | MUST | ✅ | |
 | RNF-PRIV-002 | Protección de la ubicación | MUST | ✅ | El permiso se pide al momento de usarla, explicando el motivo. |
@@ -402,14 +402,14 @@ con un cálculo de la app. La función:
 | RN-004 | Los estados respetan el flujo definido. | MUST | ✅ |
 | RN-005 | *Finalizado* es terminal. | MUST | ✅ |
 | RN-006 | Una venta no supera el stock disponible. | WON'T | — |
-| RN-007 | Un servicio no se considera pagado sin un pago aprobado registrado por el servidor. | MUST (modificado v4) | ⏳ |
+| RN-007 | Un servicio no se considera pagado sin un pago aprobado registrado por el servidor. | MUST (modificado v4) | 🟡 |
 | RN-008 | Los datos de un servicio son visibles solo para sus actores. | MUST | ✅ |
 | RN-009 | Solo se cancela antes de *trabajando*. | MUST | ✅ |
 | RN-010 | Un cliente tiene como máximo una solicitud activa. | MUST | ✅ |
 | RN-011 | Solo el cliente califica, y solo un servicio finalizado. | COULD | — |
-| RN-012 | La comisión es el 10 % del monto final; el neto del mecánico es el 90 %. Se redondea a 2 decimales y la comisión absorbe la diferencia (nuevo v4). | MUST | ⏳ |
-| RN-013 | Solo se paga un servicio *finalizado* con monto cargado, y una única vez (nuevo v4). | MUST | ⏳ |
-| RN-014 | Solo el mecánico asignado carga el monto final, y solo al finalizar (nuevo v4). | MUST | ⏳ |
+| RN-012 | La comisión es el 10 % del monto final; el neto del mecánico es el 90 %. Se redondea a 2 decimales y la comisión absorbe la diferencia (nuevo v4). | MUST | 🟡 |
+| RN-013 | Solo se paga un servicio *finalizado* con monto cargado, y una única vez (nuevo v4). | MUST | 🟡 |
+| RN-014 | Solo el mecánico asignado carga el monto final, y solo al finalizar (nuevo v4). | MUST | 🟡 |
 | RN-015 | Una cuenta creada con Google tiene el rol cliente (nuevo v4). | MUST | ⏳ |
 
 ---
@@ -426,13 +426,14 @@ con un cálculo de la app. La función:
 
 **Cambios previstos:**
 
-- `solicitudes.monto_final numeric(12,2)`: el monto del servicio, que se carga al finalizar.
+- `solicitudes.monto_final numeric(12,2)`: el monto del servicio, que el mecánico asignado carga al finalizar.
 - Tabla `pagos`: `id`, `solicitud_id` (único), `cliente_id`, `mecanico_id`, `monto`, `comision`,
   `neto_mecanico`, `medio` (`'simulado'`), `estado` (`'aprobado'`) y `creado_en`. Con RLS: la ven
   solo el cliente y el mecánico del servicio.
 - Función `registrar_pago(p_solicitud_id)`: valida RN-013, calcula RN-012 e inserta el pago (es
   `security definer`).
 - `cambiar_estado_solicitud` exige el monto final para pasar a *finalizado* (RN-014).
+- La migración `20261030120000_monto_y_pagos.sql` implementa estos cambios; quedan pendientes su aplicación y la prueba contra Supabase.
 - Trigger `crear_perfil_usuario` (RN-015):
   - toma el nombre de `full_name` o `name` y la foto de `avatar_url`;
   - asigna el rol cliente cuando el usuario viene de Google.

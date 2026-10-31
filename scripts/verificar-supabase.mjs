@@ -1,4 +1,4 @@
-// Verifica que las migraciones de solicitudes estén aplicadas. Solo hace lecturas.
+// Verifica que las migraciones de solicitudes y pagos estén aplicadas. Solo hace lecturas.
 // Uso: node --env-file=.env scripts/verificar-supabase.mjs
 
 const URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -27,9 +27,10 @@ const chequeos = [];
 const chequear = (descripcion, ok) => chequeos.push({ descripcion, ok });
 
 const columnas = {
-  solicitudes: ['codigo', 'eta_minutos', 'motivo_cancelacion', 'actualizado_en'],
+  solicitudes: ['codigo', 'eta_minutos', 'motivo_cancelacion', 'actualizado_en', 'monto_final'],
   historial_solicitudes: ['estado_anterior', 'usuario_id', 'nota'],
   mecanicos: ['usuario_id'],
+  pagos: ['solicitud_id', 'cliente_id', 'mecanico_id', 'monto', 'comision', 'neto_mecanico'],
 };
 
 for (const [tabla, lista] of Object.entries(columnas)) {
@@ -43,6 +44,7 @@ for (const [funcion, cuerpo] of [
   ['cambiar_estado_solicitud', { p_solicitud_id: '00000000-0000-0000-0000-000000000000', p_estado: 'aceptado' }],
   ['aceptar_solicitud', { p_solicitud_id: '00000000-0000-0000-0000-000000000000' }],
   ['mecanico_id_actual', {}],
+  ['registrar_pago', { p_solicitud_id: '00000000-0000-0000-0000-000000000000' }],
 ]) {
   const r = await pedir(`rpc/${funcion}`, { method: 'POST', body: JSON.stringify(cuerpo) });
   chequear(`función ${funcion} creada`, r.status !== 404);
