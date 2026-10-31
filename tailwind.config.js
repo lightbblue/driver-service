@@ -9,6 +9,9 @@
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // La app es solo oscura y no usa variantes dark:. Con 'media', NativeWind en web
+  // tira "Cannot manually set color scheme" al cargarse otra hoja de estilos (Leaflet).
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
