@@ -7,6 +7,7 @@ import {
   Boton,
   Cargando,
   Conmutador,
+  EstadoError,
   ListaVacia,
   LogoRider,
   Pantalla,
@@ -71,10 +72,12 @@ export default function SolicitudesScreen() {
       {listado.cargando && !listado.datos ? (
         <Cargando mensaje="Cargando solicitudes..." />
       ) : listado.error && !listado.datos ? (
-        <View className="gap-4 px-6">
-          <ListaVacia titulo="No pudimos cargar las solicitudes" detalle={listado.error} icono="cloud-offline-outline" />
-          <Boton titulo="Reintentar" variante="secundario" onPress={recargar} />
-        </View>
+        <EstadoError
+          titulo="No pudimos cargar las solicitudes"
+          mensaje={listado.error}
+          icono="cloud-offline-outline"
+          onReintentar={recargar}
+        />
       ) : (
         <ScrollView
           testID="lista-solicitudes"
@@ -95,6 +98,15 @@ export default function SolicitudesScreen() {
                   : 'Cuando solicites asistencia, vas a poder seguirla desde acá.'
               }
               icono="file-tray-outline"
+              accion={
+                !esMecanico
+                  ? {
+                      texto: 'Solicitar asistencia',
+                      icono: 'warning-outline',
+                      onPress: () => router.push('/solicitud/nueva'),
+                    }
+                  : undefined
+              }
             />
           ) : (
             lista.map((servicio) => (

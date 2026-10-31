@@ -40,6 +40,7 @@ export default function MapaScreen() {
 
   const [mecanicos, setMecanicos] = useState<Mecanico[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [buscandoGps, setBuscandoGps] = useState(false);
   const [permisoDenegado, setPermisoDenegado] = useState(false);
   const [especialidadSeleccionada, setEspecialidadSeleccionada] = useState<string>('Todos');
@@ -82,14 +83,16 @@ export default function MapaScreen() {
     }
   }, []);
 
-  // Cargar mecánicos desde Supabase
+  // Cargar mecánicos desde Supabase (RF-UX-003: manejo de loading y error)
   const cargarMecanicos = useCallback(async () => {
     setCargando(true);
+    setErrorCarga(null);
     try {
       const datos = await listarMecanicos(ubicacionUsuario);
       setMecanicos(datos);
     } catch (error) {
       console.error('[MAPA] Error al listar mecánicos de Supabase:', error);
+      setErrorCarga('No se pudieron obtener los mecánicos. Comprobá tu conexión.');
     } finally {
       setCargando(false);
     }
@@ -128,11 +131,13 @@ export default function MapaScreen() {
 
       // Cargar mecánicos usando la posición ya obtenida (no desde el estado)
       setCargando(true);
+      setErrorCarga(null);
       try {
         const datos = await listarMecanicos(posicion);
         setMecanicos(datos);
       } catch (error) {
         console.error('[MAPA] Error al listar mecánicos:', error);
+        setErrorCarga('No se pudieron obtener los mecánicos. Comprobá tu conexión.');
       } finally {
         setCargando(false);
       }
@@ -219,7 +224,11 @@ export default function MapaScreen() {
               <Text className="text-micro font-medium text-texto-tenue">
                 {cargando
                   ? 'Buscando prestadores en la zona...'
-                  : `${mecánicosFiltrados.length} talleres disponibles`}
+                  : errorCarga
+                    ? 'No se pudo cargar la lista'
+                    : mecánicosFiltrados.length === 0
+                      ? 'Sin resultados para este filtro'
+                      : `${mecánicosFiltrados.length} talleres disponibles`}
               </Text>
             </View>
 
@@ -307,6 +316,62 @@ export default function MapaScreen() {
             )}
           </Pressable>
         </View>
+
+        {/* Banner de lista vacía en mapa cuando un filtro no tiene talleres (RF-UX-003) */}
+        {!cargando && !errorCarga && mecánicosFiltrados.length === 0 ? (
+          <View
+            testID="estado-vacio-mapa"
+            className="absolute bottom-24 left-4 right-4 rounded-2xl border border-borde bg-superficie/95 p-4 shadow-xl backdrop-blur-md"
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-superficie-alta">
+                <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-texto">
+                  Sin talleres en esta categoría
+                </Text>
+                <Text className="text-micro text-texto-tenue">
+                  No hay mecánicos con especialidad en &ldquo;{especialidadSeleccionada}&rdquo;.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setEspecialidadSeleccionada('Todos')}
+                className="rounded-lg bg-acento px-3 py-1.5"
+                accessibilityRole="button"
+                accessibilityLabel="Ver todos los mecánicos"
+              >
+                <Text className="text-mini font-bold text-texto-inverso">Ver todos</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Banner de error de conexión en mapa con reintento (RF-UX-003) */}
+        {errorCarga ? (
+          <View
+            testID="estado-error-mapa"
+            className="absolute bottom-24 left-4 right-4 rounded-2xl border border-peligro/30 bg-superficie/95 p-4 shadow-xl backdrop-blur-md"
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-peligro/15">
+                <Ionicons name="alert-circle-outline" size={20} color="#EF4444" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-texto">Error de conexión</Text>
+                <Text className="text-micro text-texto-tenue">{errorCarga}</Text>
+              </View>
+              <Pressable
+                onPress={cargarMecanicos}
+                className="rounded-lg border border-borde bg-superficie-alta px-3 py-1.5 active:bg-superficie"
+                accessibilityRole="button"
+                accessibilityLabel="Reintentar carga de mecánicos"
+              >
+                <Text className="text-mini font-bold text-acento">Reintentar</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
 
         {/* Modal / BottomSheet de detalles del mecánico seleccionado */}
         <DetalleMecanicoModal
