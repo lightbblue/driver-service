@@ -1,19 +1,42 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, Text } from 'react-native';
+import { ActivityIndicator, Pressable, Text } from 'react-native';
+
+type BotonGoogleProps = {
+  titulo?: string;
+  onPress?: () => void;
+  cargando?: boolean;
+  deshabilitado?: boolean;
+};
 
 /**
- * Control inerte de autenticación federada (sección 4.4).
- * Se renderiza pero no ejecuta ninguna acción: depende del backend (RF-AUTH-007).
+ * Botón para inicio de sesión federado con Google (RF-AUTH-007).
+ * Cumple con RNF-UX-004 (respuesta táctil y estado deshabilitado/cargando).
  */
-export function BotonGoogle({ titulo = 'Continuar con Google' }: { titulo?: string }) {
+export function BotonGoogle({
+  titulo = 'Continuar con Google',
+  onPress,
+  cargando = false,
+  deshabilitado = false,
+}: BotonGoogleProps) {
   return (
     <Pressable
       testID="btn-google"
       accessibilityRole="button"
       accessibilityLabel={titulo}
-      className="min-h-[52px] flex-row items-center justify-center gap-2.5 rounded-campo border border-acento bg-transparent px-5 py-4 active:bg-acento/10">
-      <Ionicons name="logo-google" size={19} color="#FFC107" />
-      <Text className="text-base font-bold text-texto">{titulo}</Text>
+      accessibilityState={{ disabled: deshabilitado || cargando }}
+      disabled={deshabilitado || cargando}
+      onPress={onPress}
+      className={`min-h-[52px] flex-row items-center justify-center gap-2.5 rounded-campo border border-acento bg-transparent px-5 py-4 active:bg-acento/10 ${
+        deshabilitado ? 'opacity-40' : ''
+      }`}>
+      {cargando ? (
+        <ActivityIndicator color="#FFC107" />
+      ) : (
+        <>
+          <Ionicons name="logo-google" size={19} color="#FFC107" />
+          <Text className="text-base font-bold text-texto">{titulo}</Text>
+        </>
+      )}
     </Pressable>
   );
 }

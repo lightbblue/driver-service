@@ -1,4 +1,3 @@
-
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -20,7 +19,7 @@ import {
   Pantalla,
   SeparadorO,
 } from '@/components/ui';
-import { iniciarSesion as autenticar } from '@/services';
+import { iniciarSesion as autenticar, iniciarSesionConGoogle } from '@/services';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -28,10 +27,11 @@ export default function LoginScreen() {
   const [correo, setCorreo] = useState('');
   const [contrasenia, setContrasenia] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [cargandoGoogle, setCargandoGoogle] = useState(false);
   const [errorMensaje, setErrorMensaje] = useState('');
 
   const iniciarSesion = async () => {
-    if (cargando) return;
+    if (cargando || cargandoGoogle) return;
 
     setErrorMensaje('');
 
@@ -51,6 +51,26 @@ export default function LoginScreen() {
       );
     } finally {
       setCargando(false);
+    }
+  };
+
+  const iniciarSesionGoogle = async () => {
+    if (cargando || cargandoGoogle) return;
+
+    setErrorMensaje('');
+    setCargandoGoogle(true);
+
+    try {
+      const conectado = await iniciarSesionConGoogle();
+      if (conectado) {
+        router.replace('/inicio');
+      }
+    } catch (error) {
+      setErrorMensaje(
+        error instanceof Error ? error.message : 'No se pudo iniciar sesión con Google.',
+      );
+    } finally {
+      setCargandoGoogle(false);
     }
   };
 
@@ -91,7 +111,7 @@ export default function LoginScreen() {
               autoComplete="email"
               value={correo}
               onChangeText={setCorreo}
-              editable={!cargando}
+              editable={!cargando && !cargandoGoogle}
             />
 
             <CampoTexto
@@ -103,7 +123,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               value={contrasenia}
               onChangeText={setContrasenia}
-              editable={!cargando}
+              editable={!cargando && !cargandoGoogle}
             />
           </View>
 
@@ -121,13 +141,17 @@ export default function LoginScreen() {
               titulo={cargando ? 'Iniciando sesión...' : 'Iniciar sesión'}
               iconoDerecha="arrow-forward"
               cargando={cargando}
-              deshabilitado={cargando}
+              deshabilitado={cargando || cargandoGoogle}
               onPress={iniciarSesion}
             />
 
             <SeparadorO />
 
-            <BotonGoogle />
+            <BotonGoogle
+              onPress={iniciarSesionGoogle}
+              cargando={cargandoGoogle}
+              deshabilitado={cargando || cargandoGoogle}
+            />
           </View>
 
           <View className="flex-row items-center justify-center gap-1">
