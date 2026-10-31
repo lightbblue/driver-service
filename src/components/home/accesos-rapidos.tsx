@@ -11,19 +11,22 @@ export type AccesoRapido = {
   onPress?: () => void;
 };
 
-/** Cuadrícula de cuatro accesos rápidos del Home. */
+/** Fila de accesos rápidos del Home: se reparten el ancho en partes iguales. */
 export function AccesosRapidos({ accesos }: { accesos: AccesoRapido[] }) {
   return (
     <View className="mb-6 flex-row gap-2">
       {accesos.map((acceso) => {
         const navegable = Boolean(acceso.onPress);
 
+        const etiquetaLimpia = acceso.etiqueta.replace(/\n/g, ' ');
+
         return (
           <Pressable
             key={acceso.id}
             testID={`acceso-${acceso.id}`}
             accessibilityRole="button"
-            accessibilityLabel={acceso.etiqueta}
+            accessibilityLabel={etiquetaLimpia}
+            accessibilityHint={navegable ? `Navega a la sección de ${etiquetaLimpia}` : undefined}
             onPress={acceso.onPress}
             className={cn(
               'min-h-[96px] flex-1 items-center justify-center gap-2 rounded-tarjeta border border-borde bg-superficie px-1.5 py-3',

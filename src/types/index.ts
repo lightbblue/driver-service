@@ -53,6 +53,7 @@ export interface Mecanico {
   logo_url: string | null;
   direccion_taller: string;
   localidad: string;
+  telefono?: string | null;
   latitud: number;
   longitud: number;
   radio_cobertura_km: number;

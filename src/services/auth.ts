@@ -10,9 +10,12 @@ export type DatosRegistro = {
   /** Solo para mecánicos. */
   taller?: {
     nombre: string;
-    ubicacion: string;
+    /** Zona donde trabaja (ej: Pilar). Se guarda en `mecanicos.localidad`. */
+    zona: string;
     especialidades: string[];
     descripcion: string;
+    /** Solo si tiene taller: lo ubica en el mapa. Null si hace asistencia en ruta. */
+    ubicacion: { latitud: number; longitud: number; direccion: string } | null;
   };
 };
 
@@ -56,9 +59,16 @@ export async function registrarCuenta(datos: DatosRegistro): Promise<{ requiereC
         ...(datos.taller
           ? {
               taller_nombre: datos.taller.nombre.trim(),
-              taller_ubicacion: datos.taller.ubicacion.trim(),
+              taller_ubicacion: datos.taller.zona.trim(),
               taller_especialidades: datos.taller.especialidades,
               taller_descripcion: datos.taller.descripcion.trim(),
+              ...(datos.taller.ubicacion
+                ? {
+                    taller_latitud: datos.taller.ubicacion.latitud,
+                    taller_longitud: datos.taller.ubicacion.longitud,
+                    taller_direccion: datos.taller.ubicacion.direccion.trim(),
+                  }
+                : {}),
             }
           : {}),
       },

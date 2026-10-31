@@ -3,7 +3,7 @@ export { Boton } from './boton';
 export { BotonGoogle } from './boton-google';
 export { Calificacion } from './calificacion';
 export { CampoTexto } from './campo-texto';
-export { Cargando, ListaVacia } from './estados';
+export { Cargando, EstadoError, ListaVacia } from './estados';
 export { Casilla } from './casilla';
 export { Chip } from './chip';
 export { Conmutador, type OpcionConmutador } from './conmutador';

@@ -34,13 +34,13 @@ export default function HomeScreen() {
       id: 'mecanicos',
       etiqueta: 'Mecánicos\ncerca tuyo',
       icono: 'location-outline',
-      onPress: () => router.push('/mapa'),
+      onPress: () => router.push({ pathname: '/mapa', params: { vista: 'lista' } }),
     },
     {
       id: 'mapa',
       etiqueta: 'Ver mapa',
       icono: 'map-outline',
-      onPress: () => router.push('/mapa'),
+      onPress: () => router.push({ pathname: '/mapa', params: { vista: 'mapa' } }),
     },
     {
       id: 'solicitudes',
@@ -48,8 +48,6 @@ export default function HomeScreen() {
       icono: 'construct-outline',
       onPress: () => router.push('/solicitudes'),
     },
-    // Comunidad es COULD y queda fuera del mapa de pantallas: se renderiza sin navegar.
-    { id: 'comunidad', etiqueta: 'Comunidad\nRider Service', icono: 'people-outline' },
   ];
 
   return (
@@ -85,7 +83,9 @@ export default function HomeScreen() {
 
         <AccesosRapidos accesos={accesos} />
 
-        <EncabezadoSeccion titulo="Mecánicos destacados" accion="Ver todos" onPressAccion={() => router.push('/mapa')} />
+        <EncabezadoSeccion titulo="Mecánicos destacados" accion="Ver todos"
+          onPressAccion={() => router.push({ pathname: '/mapa', params: { vista: 'lista' } })}
+        />
         {mecanicos.cargando ? (
           <Cargando mensaje="Buscando mecánicos…" />
         ) : mecanicos.datos.length === 0 ? (

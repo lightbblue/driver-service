@@ -15,7 +15,7 @@ import {
 
 import { DistintivoEstado } from '@/components/seguimiento/distintivo-estado';
 import { LineaTiempo } from '@/components/seguimiento/linea-tiempo';
-import { Boton, CampoTexto, Cargando, Chip, ListaVacia, Pantalla, Tarjeta } from '@/components/ui';
+import { Boton, CampoTexto, Cargando, Chip, EstadoError, ListaVacia, Pantalla, Tarjeta } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
 import {
   cambiarEstadoSolicitud,
@@ -175,10 +175,12 @@ export default function SeguimientoScreen() {
         {detalle.cargando && !detalle.datos ? (
           <Cargando mensaje="Cargando la solicitud..." />
         ) : detalle.error && !detalle.datos ? (
-          <View className="gap-4 px-6 py-10">
-            <ListaVacia titulo="No pudimos cargar la solicitud" detalle={detalle.error} icono="cloud-offline-outline" />
-            <Boton titulo="Reintentar" variante="secundario" onPress={recargar} />
-          </View>
+          <EstadoError
+            titulo="No pudimos cargar la solicitud"
+            mensaje={detalle.error}
+            icono="cloud-offline-outline"
+            onReintentar={recargar}
+          />
         ) : !servicio ? (
           <ListaVacia
             titulo="Solicitud no encontrada"
