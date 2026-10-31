@@ -4,6 +4,7 @@ import type * as Leaflet from 'leaflet';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { COLORES } from '@/lib/tema';
 import type { Mecanico } from '@/types';
 
 export type Region = {
@@ -21,13 +22,18 @@ export type MapaMecanicosProps = {
   regionInicial: Region;
 };
 
+/** Lo mismo que la pantalla le pide al MapView nativo, implementado con Leaflet. */
+export type MapaMecanicosRef = {
+  animateToRegion: (region: Region) => void;
+};
+
 const TESELAS = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATRIBUCION = '&copy; OpenStreetMap contributors';
 
 /**
  * Componente del mapa para la versión Web utilizando Leaflet (OpenStreetMap).
  */
-export const MapaMecanicos = forwardRef<any, MapaMecanicosProps>(function MapaMecanicos(
+export const MapaMecanicos = forwardRef<MapaMecanicosRef, MapaMecanicosProps>(function MapaMecanicos(
   {
     mecanicos,
     ubicacionUsuario,
@@ -41,6 +47,8 @@ export const MapaMecanicos = forwardRef<any, MapaMecanicosProps>(function MapaMe
   const mapaRef = useRef<Leaflet.Map | null>(null);
   const marcadoresRef = useRef<Map<string, Leaflet.Marker>>(new Map());
   const marcadorUsuarioRef = useRef<Leaflet.Marker | null>(null);
+  // El mapa se crea una sola vez: los cambios de región después se hacen con animateToRegion.
+  const regionInicialRef = useRef(regionInicial);
 
   useImperativeHandle(ref, () => ({
     animateToRegion: (region: Region) => {
@@ -58,8 +66,8 @@ export const MapaMecanicos = forwardRef<any, MapaMecanicosProps>(function MapaMe
       if (cancelado || !contenedorRef.current) return;
 
       const centro: Leaflet.LatLngTuple = [
-        regionInicial.latitude,
-        regionInicial.longitude,
+        regionInicialRef.current.latitude,
+        regionInicialRef.current.longitude,
       ];
       const mapa = L.map(contenedorRef.current).setView(centro, 13);
       L.tileLayer(TESELAS, { maxZoom: 19, attribution: ATRIBUCION }).addTo(mapa);
@@ -89,14 +97,14 @@ export const MapaMecanicos = forwardRef<any, MapaMecanicosProps>(function MapaMe
 
       mecanicos.forEach((mec) => {
         const esSeleccionado = mecanicoSeleccionado?.id === mec.id;
-        const color = esSeleccionado ? '#FFC107' : '#1F1F25';
-        const colorIcono = esSeleccionado ? '#0B0B0D' : '#FFC107';
+        const color = esSeleccionado ? COLORES.acento : COLORES.superficieAlta;
+        const colorIcono = esSeleccionado ? COLORES.textoInverso : COLORES.acento;
 
         const icono = L.divIcon({
           className: 'custom-mecanico-pin',
           html: `
             <div style="background-color: ${color}; width: 34px; height: 34px; border-radius: 17px; border: 2px solid ${
-            esSeleccionado ? '#FFF' : '#FFC107'
+            esSeleccionado ? COLORES.texto : COLORES.acento
           }; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.4); cursor: pointer;">
               <span style="color: ${colorIcono}; font-weight: bold; font-size: 16px;">🔧</span>
             </div>
@@ -131,8 +139,8 @@ export const MapaMecanicos = forwardRef<any, MapaMecanicosProps>(function MapaMe
         const icono = L.divIcon({
           className: 'custom-user-pin',
           html: `
-            <div style="background-color: rgba(255,193,7,0.3); width: 28px; height: 28px; border-radius: 14px; border: 2px solid #FFC107; display: flex; align-items: center; justify-content: center;">
-              <div style="background-color: #FFC107; width: 12px; height: 12px; border-radius: 6px;"></div>
+            <div style="background-color: ${COLORES.acento}4D; width: 28px; height: 28px; border-radius: 14px; border: 2px solid ${COLORES.acento}; display: flex; align-items: center; justify-content: center;">
+              <div style="background-color: ${COLORES.acento}; width: 12px; height: 12px; border-radius: 6px;"></div>
             </div>
           `,
           iconSize: [28, 28],

@@ -16,14 +16,24 @@ import {
   SubirImagenes,
   type OpcionConmutador,
 } from '@/components/ui';
+import { UbicacionTaller } from '@/components/registro/ubicacion-taller';
 import { COLORES } from '@/lib/tema';
 import { registrarCuenta } from '@/services';
+import type { UbicacionServicio } from '@/types';
 
 type Variante = 'usuario' | 'mecanico';
 
 const OPCIONES: OpcionConmutador<Variante>[] = [
   { valor: 'usuario', etiqueta: 'Usuario', icono: 'person-outline' },
   { valor: 'mecanico', etiqueta: 'Mecánico', icono: 'construct-outline' },
+];
+
+/** Con taller aparece en el mapa; en ruta solo atiende donde está el cliente. */
+type ModalidadMecanico = 'taller' | 'ruta';
+
+const OPCIONES_MODALIDAD: OpcionConmutador<ModalidadMecanico>[] = [
+  { valor: 'taller', etiqueta: 'Tengo taller', icono: 'storefront-outline' },
+  { valor: 'ruta', etiqueta: 'Asistencia en ruta', icono: 'car-outline' },
 ];
 
 const TEXTOS: Record<Variante, { titulo: string; bajada: string; boton: string }> = {
@@ -53,20 +63,31 @@ export default function RegisterScreen() {
   const [cargando, setCargando] = useState(false);
 
   // Campos propios del mecánico
+  const [modalidad, setModalidad] = useState<ModalidadMecanico>('taller');
   const [taller, setTaller] = useState('');
-  const [ubicacionTaller, setUbicacionTaller] = useState('');
+  const [zona, setZona] = useState('');
+  const [ubicacionMapa, setUbicacionMapa] = useState<UbicacionServicio | null>(null);
   const [especialidades, setEspecialidades] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  /** Mientras el dedo está sobre el mapa se pausa el scroll del formulario. */
+  const [mapaActivo, setMapaActivo] = useState(false);
 
   const esMecanico = variante === 'mecanico';
+  const tieneTaller = esMecanico && modalidad === 'taller';
   const textos = TEXTOS[variante];
 
   function validar(): string | null {
     if (!nombre.trim() || !email.trim() || !telefono.trim() || !password || !confirmacion) {
       return 'Completá todos los campos obligatorios para continuar.';
     }
-    if (esMecanico && !ubicacionTaller.trim()) {
-      return 'Indicá la ubicación de tu taller para que los clientes puedan encontrarte.';
+    if (esMecanico && !zona.trim()) {
+      return 'Indicá la zona donde trabajás para que los clientes puedan encontrarte.';
+    }
+    if (tieneTaller && !taller.trim()) {
+      return 'Indicá el nombre de tu taller.';
+    }
+    if (tieneTaller && (!ubicacionMapa || !ubicacionMapa.direccion.trim())) {
+      return 'Marcá en el mapa dónde está tu taller y revisá la dirección.';
     }
     if (password.length < 6) {
       return 'La contraseña debe tener al menos 6 caracteres.';
@@ -97,13 +118,15 @@ export default function RegisterScreen() {
         rol: esMecanico ? 'mecanico' : 'cliente',
         taller: esMecanico
           ? {
-              nombre: taller,
-              ubicacion: ubicacionTaller,
+              // En ruta no hay taller: se usa el nombre de la persona.
+              nombre: tieneTaller ? taller : '',
+              zona,
               especialidades: especialidades
                 .split(',')
                 .map((e) => e.trim())
                 .filter(Boolean),
               descripcion,
+              ubicacion: tieneTaller ? ubicacionMapa : null,
             }
           : undefined,
       });
@@ -148,6 +171,7 @@ export default function RegisterScreen() {
 
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
+          scrollEnabled={!mapaActivo}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentContainerClassName="gap-5 px-6 pb-10 pt-2">
@@ -195,22 +219,44 @@ export default function RegisterScreen() {
 
             {esMecanico ? (
               <>
+                <View className="gap-2">
+                  <Text className="text-sm font-semibold text-texto">¿Cómo trabajás?</Text>
+                  <Conmutador
+                    opciones={OPCIONES_MODALIDAD}
+                    valor={modalidad}
+                    onCambio={setModalidad}
+                  />
+                  <Text className="text-mini text-texto-tenue">
+                    {tieneTaller
+                      ? 'Tu taller aparece en el mapa y además recibís pedidos de asistencia.'
+                      : 'Vas hasta donde está el cliente. No aparecés en el mapa, pero recibís los pedidos de tu zona.'}
+                  </Text>
+                </View>
+                {tieneTaller ? (
+                  <CampoTexto
+                    testID="campo-taller"
+                    etiqueta="Nombre del taller"
+                    icono="storefront-outline"
+                    placeholder="Nombre de tu taller"
+                    value={taller}
+                    onChangeText={setTaller}
+                  />
+                ) : null}
                 <CampoTexto
-                  testID="campo-taller"
-                  etiqueta="Nombre del taller (opcional)"
-                  icono="storefront-outline"
-                  placeholder="Nombre de tu taller"
-                  value={taller}
-                  onChangeText={setTaller}
+                  testID="campo-zona"
+                  etiqueta="Zona donde trabajás"
+                  icono="navigate-outline"
+                  placeholder="Ej: Pilar, Tortuguitas"
+                  value={zona}
+                  onChangeText={setZona}
                 />
-                <CampoTexto
-                  testID="campo-ubicacion-taller"
-                  etiqueta="Ubicación del taller"
-                  icono="location-outline"
-                  placeholder="Dirección o localidad"
-                  value={ubicacionTaller}
-                  onChangeText={setUbicacionTaller}
-                />
+                {tieneTaller ? (
+                  <UbicacionTaller
+                    ubicacion={ubicacionMapa}
+                    onCambio={setUbicacionMapa}
+                    onInteraccion={setMapaActivo}
+                  />
+                ) : null}
                 <CampoTexto
                   testID="campo-especialidades"
                   etiqueta="Especialidades"

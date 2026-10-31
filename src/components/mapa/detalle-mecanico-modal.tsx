@@ -4,6 +4,7 @@ import { Linking, Modal, Pressable, Text, TouchableWithoutFeedback, View } from 
 
 import { Avatar, Boton, Calificacion, Chip } from '@/components/ui';
 import { formatearDistancia } from '@/lib/formato';
+import { COLORES } from '@/lib/tema';
 import type { Mecanico } from '@/types';
 
 type DetalleMecanicoModalProps = {
@@ -18,6 +19,9 @@ export function DetalleMecanicoModal({ mecanico, onCerrar }: DetalleMecanicoModa
   const router = useRouter();
 
   if (!mecanico) return null;
+
+  // Sin ubicación cargada: no tiene taller, hace asistencia en la ruta.
+  const enRuta = mecanico.latitud === 0 && mecanico.longitud === 0;
 
   const llamar = () => {
     if (mecanico.telefono) {
@@ -84,16 +88,22 @@ export function DetalleMecanicoModal({ mecanico, onCerrar }: DetalleMecanicoModa
                   hitSlop={8}
                   className="h-8 w-8 items-center justify-center rounded-full bg-superficie-alta active:opacity-70"
                 >
-                  <Ionicons name="close" size={20} color="#9CA3AF" />
+                  <Ionicons name="close" size={20} color={COLORES.textoTenue} />
                 </Pressable>
               </View>
 
               {/* Distancia y Dirección */}
               <View className="mt-4 flex-row items-center justify-between rounded-xl border border-borde bg-fondo px-3.5 py-2.5">
                 <View className="flex-1 flex-row items-center gap-2">
-                  <Ionicons name="location" size={17} color="#FFC107" />
+                  <Ionicons
+                    name={enRuta ? 'car-outline' : 'location'}
+                    size={17}
+                    color={COLORES.acento}
+                  />
                   <Text className="flex-1 text-xs text-texto-tenue" numberOfLines={1}>
-                    {mecanico.direccion_taller || mecanico.localidad}
+                    {enRuta
+                      ? `Asistencia en ruta · ${mecanico.localidad}`
+                      : mecanico.direccion_taller || mecanico.localidad}
                   </Text>
                 </View>
 
@@ -108,7 +118,7 @@ export function DetalleMecanicoModal({ mecanico, onCerrar }: DetalleMecanicoModa
 
               {/* Descripción (si la tiene) */}
               {mecanico.descripcion ? (
-                <Text className="mt-3 text-xs leading-relaxed text-texto-tenue" numberOfLines={2}>
+                <Text className="mt-3 text-xs leading-relaxed text-texto-tenue" numberOfLines={4}>
                   {mecanico.descripcion}
                 </Text>
               ) : null}
@@ -137,7 +147,7 @@ export function DetalleMecanicoModal({ mecanico, onCerrar }: DetalleMecanicoModa
                     accessibilityHint={`Inicia una llamada telefónica al número ${mecanico.telefono}`}
                     className="flex-1 flex-row items-center justify-center gap-2 rounded-campo border border-borde bg-superficie-alta py-3.5 active:bg-superficie"
                   >
-                    <Ionicons name="call-outline" size={19} color="#FFC107" />
+                    <Ionicons name="call-outline" size={19} color={COLORES.acento} />
                     <Text className="text-sm font-bold text-texto">Llamar</Text>
                   </Pressable>
                 ) : null}
@@ -146,8 +156,8 @@ export function DetalleMecanicoModal({ mecanico, onCerrar }: DetalleMecanicoModa
                   <Boton
                     titulo="Solicitar asistencia"
                     icono="warning-outline"
-                    accessibilityLabel={`Solicitar asistencia a ${mecanico.nombre_taller}`}
-                    accessibilityHint="Abre el formulario para solicitar auxilio mecánico a este taller"
+                    accessibilityLabel="Solicitar asistencia"
+                    accessibilityHint="Abre el formulario de solicitud; la toma el primer mecánico disponible"
                     onPress={solicitarAuxilio}
                   />
                 </View>

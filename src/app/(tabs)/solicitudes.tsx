@@ -4,7 +4,6 @@ import { RefreshControl, ScrollView, Text, View } from 'react-native';
 
 import { TarjetaSolicitud } from '@/components/seguimiento/tarjeta-solicitud';
 import {
-  Boton,
   Cargando,
   Conmutador,
   EstadoError,

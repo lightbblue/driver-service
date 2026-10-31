@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Text, View } from 'react-native';
 
+import { COLORES } from '@/lib/tema';
+
 import { Boton } from './boton';
 
 /** Estado de carga estándar (RNF-UX-003): ninguna pantalla queda en blanco. */
 export function Cargando({ mensaje = 'Cargando…' }: { mensaje?: string }) {
   return (
     <View className="items-center justify-center gap-3 py-12" testID="estado-cargando">
-      <ActivityIndicator color="#FFC107" size="small" />
+      <ActivityIndicator color={COLORES.acento} size="small" />
       <Text className="text-chico text-texto-tenue">{mensaje}</Text>
     </View>
   );
@@ -28,7 +30,7 @@ type ListaVaciaProps = {
 export function ListaVacia({ titulo, detalle, icono = 'file-tray-outline', accion }: ListaVaciaProps) {
   return (
     <View className="items-center justify-center gap-2 px-6 py-12" testID="estado-vacio">
-      <Ionicons name={icono} size={34} color="#6B7280" />
+      <Ionicons name={icono} size={34} color={COLORES.textoSutil} />
       <Text className="text-center text-base font-semibold text-texto">{titulo}</Text>
       {detalle ? (
         <Text className="text-center text-chico text-texto-tenue">{detalle}</Text>
@@ -67,7 +69,7 @@ export function EstadoError({
   return (
     <View className="items-center justify-center gap-3 px-6 py-12" testID="estado-error">
       <View className="h-14 w-14 items-center justify-center rounded-full bg-peligro/15">
-        <Ionicons name={icono} size={30} color="#EF4444" />
+        <Ionicons name={icono} size={30} color={COLORES.peligro} />
       </View>
       <Text className="text-center text-base font-bold text-texto">{titulo}</Text>
       {mensaje ? (

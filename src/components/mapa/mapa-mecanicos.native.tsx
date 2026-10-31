@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { forwardRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT, type Region } from 'react-native-maps';
 
+import { COLORES } from '@/lib/tema';
 import type { Mecanico } from '@/types';
 
 export type MapaMecanicosProps = {
@@ -53,7 +54,7 @@ export const MapaMecanicos = forwardRef<MapView, MapaMecanicosProps>(function Ma
           >
             <View style={styles.pinUsuarioExterior}>
               <View style={styles.pinUsuarioInterior}>
-                <Ionicons name="navigate" size={14} color="#0B0B0D" />
+                <Ionicons name="navigate" size={14} color={COLORES.textoInverso} />
               </View>
             </View>
           </Marker>
@@ -84,7 +85,7 @@ export const MapaMecanicos = forwardRef<MapView, MapaMecanicosProps>(function Ma
                   <Ionicons
                     name="construct"
                     size={estaSeleccionado ? 19 : 16}
-                    color={estaSeleccionado ? '#0B0B0D' : '#FFC107'}
+                    color={estaSeleccionado ? COLORES.textoInverso : COLORES.acento}
                   />
                   {mecanico.disponible ? <View style={styles.indicadorDisponible} /> : null}
                 </View>
@@ -119,17 +120,17 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 193, 7, 0.25)',
+    backgroundColor: `${COLORES.acento}40`,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#FFC107',
+    borderColor: COLORES.acento,
   },
   pinUsuarioInterior: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#FFC107',
+    backgroundColor: COLORES.acento,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -144,19 +145,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    shadowColor: '#000',
+    shadowColor: COLORES.fondo,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.35,
     shadowRadius: 3,
     elevation: 5,
   },
   pinNormal: {
-    backgroundColor: '#1F1F25',
-    borderColor: '#FFC107',
+    backgroundColor: COLORES.superficieAlta,
+    borderColor: COLORES.acento,
   },
   pinSeleccionado: {
-    backgroundColor: '#FFC107',
-    borderColor: '#FFFFFF',
+    backgroundColor: COLORES.acento,
+    borderColor: COLORES.texto,
     transform: [{ scale: 1.15 }],
   },
   indicadorDisponible: {
@@ -166,9 +167,9 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#10B981',
+    backgroundColor: COLORES.exito,
     borderWidth: 1.5,
-    borderColor: '#1F1F25',
+    borderColor: COLORES.superficieAlta,
   },
   flechaPin: {
     width: 0,
@@ -182,10 +183,10 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
   },
   flechaNormal: {
-    borderTopColor: '#FFC107',
+    borderTopColor: COLORES.acento,
   },
   flechaSeleccionada: {
-    borderTopColor: '#FFFFFF',
+    borderTopColor: COLORES.texto,
   },
 });
 

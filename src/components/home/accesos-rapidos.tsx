@@ -11,7 +11,7 @@ export type AccesoRapido = {
   onPress?: () => void;
 };
 
-/** Cuadrícula de cuatro accesos rápidos del Home. */
+/** Fila de accesos rápidos del Home: se reparten el ancho en partes iguales. */
 export function AccesosRapidos({ accesos }: { accesos: AccesoRapido[] }) {
   return (
     <View className="mb-6 flex-row gap-2">

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,9 +13,11 @@ import type MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DetalleMecanicoModal } from '@/components/mapa/detalle-mecanico-modal';
+import { FilaMecanico } from '@/components/mapa/fila-mecanico';
 import { MapaMecanicos } from '@/components/mapa/mapa-mecanicos';
-import { Chip, Pantalla } from '@/components/ui';
-import { listarMecanicos } from '@/services/mecanicos';
+import { Chip, Conmutador, ListaVacia, Pantalla, type OpcionConmutador } from '@/components/ui';
+import { COLORES } from '@/lib/tema';
+import { listarMecanicos, tieneUbicacion } from '@/services/mecanicos';
 import type { Mecanico } from '@/types';
 
 // Coordenadas por defecto (Buenos Aires / Pilar)
@@ -25,13 +28,26 @@ const REGION_POR_DEFECTO = {
   longitudeDelta: 0.08,
 };
 
+type Vista = 'mapa' | 'lista';
+
+const OPCIONES_VISTA: OpcionConmutador<Vista>[] = [
+  { valor: 'mapa', etiqueta: 'Mapa', icono: 'map-outline' },
+  { valor: 'lista', etiqueta: 'Lista', icono: 'list-outline' },
+];
+
 /**
- * Pantalla completa de Mapa de Mecánicos Cercanos (RF-VIEW-007).
- * Integra `react-native-maps`, `expo-location` y la consulta a Supabase.
+ * Mecánicos cercanos (RF-VIEW-007) con dos vistas:
+ * - Mapa: solo talleres con lugar físico.
+ * - Lista: todos los mecánicos, también los de asistencia en ruta (sin ubicación).
+ * La vista viaja en el parámetro `vista` para que el Inicio abra la que corresponde.
  */
 export default function MapaScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const mapRef = useRef<MapView | null>(null);
+  const params = useLocalSearchParams<{ vista?: string }>();
+  const vista: Vista = params.vista === 'lista' ? 'lista' : 'mapa';
+  const [alturaEncabezado, setAlturaEncabezado] = useState(0);
 
   const [ubicacionUsuario, setUbicacionUsuario] = useState<{
     latitud: number;
@@ -142,31 +158,44 @@ export default function MapaScreen() {
         setCargando(false);
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // El mapa muestra solo talleres con lugar físico. Los mecánicos sin ubicación
+  // hacen asistencia en la ruta: aparecen en la lista y reciben las solicitudes por "Disponibles".
+  const talleres = useMemo(() => mecanicos.filter(tieneUbicacion), [mecanicos]);
+  const visibles = vista === 'mapa' ? talleres : mecanicos;
 
   // Extraer lista de especialidades disponibles para la barra de filtros
   const especialidades = useMemo(() => {
     const conjunto = new Set<string>();
-    mecanicos.forEach((m) => {
+    visibles.forEach((m) => {
       m.especialidades.forEach((esp) => conjunto.add(esp));
     });
     return ['Todos', ...Array.from(conjunto)];
-  }, [mecanicos]);
+  }, [visibles]);
 
-  // Filtrar mecánicos según la especialidad seleccionada
-  const mecánicosFiltrados = useMemo(() => {
+  // Filtrar según la especialidad seleccionada
+  const mecanicosFiltrados = useMemo(() => {
     if (especialidadSeleccionada === 'Todos') {
-      return mecanicos;
+      return visibles;
     }
-    return mecanicos.filter((m) =>
+    return visibles.filter((m) =>
       m.especialidades.includes(especialidadSeleccionada),
     );
-  }, [mecanicos, especialidadSeleccionada]);
+  }, [visibles, especialidadSeleccionada]);
 
-  // Centrar en un mecánico al seleccionarlo
+  // El mapa recibe siempre los talleres filtrados, aunque esté oculto detrás de la lista.
+  const talleresFiltrados = useMemo(
+    () => mecanicosFiltrados.filter(tieneUbicacion),
+    [mecanicosFiltrados],
+  );
+
+  const cambiarVista = (nueva: Vista) => router.setParams({ vista: nueva });
+
+  // Abrir la ficha y, si tiene ubicación, centrar el mapa en él
   const seleccionarMecanico = (mecanico: Mecanico) => {
     setMecanicoSeleccionado(mecanico);
+    if (!tieneUbicacion(mecanico)) return;
     mapRef.current?.animateToRegion({
       latitude: mecanico.latitud,
       longitude: mecanico.longitud,
@@ -195,7 +224,7 @@ export default function MapaScreen() {
         {/* Componente del mapa */}
         <MapaMecanicos
           ref={mapRef}
-          mecanicos={mecánicosFiltrados}
+          mecanicos={talleresFiltrados}
           ubicacionUsuario={ubicacionUsuario}
           mecanicoSeleccionado={mecanicoSeleccionado}
           onSeleccionarMecanico={seleccionarMecanico}
@@ -211,29 +240,61 @@ export default function MapaScreen() {
           }
         />
 
-        {/* Encabezado flotante superior con título y contador */}
+        {/* Vista Lista: tapa el mapa (que sigue montado para no perder su estado) */}
+        {vista === 'lista' ? (
+          <FlatList
+            testID="lista-mecanicos"
+            className="absolute inset-0 bg-fondo"
+            data={mecanicosFiltrados}
+            keyExtractor={(item) => item.id}
+            contentContainerClassName="gap-3 px-4 pb-8"
+            contentContainerStyle={{ paddingTop: alturaEncabezado + 8 }}
+            renderItem={({ item }) => (
+              <FilaMecanico
+                mecanico={item}
+                tieneTaller={tieneUbicacion(item)}
+                onPress={() => seleccionarMecanico(item)}
+              />
+            )}
+            ListEmptyComponent={
+              cargando || errorCarga ? undefined : (
+                <ListaVacia
+                  titulo="Sin mecánicos para este filtro"
+                  detalle="Probá con otra especialidad."
+                  icono="search-outline"
+                />
+              )
+            }
+          />
+        ) : null}
+
+        {/* Encabezado flotante superior con título, contador y selector de vista */}
         <View
+          onLayout={(e) => setAlturaEncabezado(e.nativeEvent.layout.height)}
           style={{ paddingTop: Math.max(insets.top, 14) }}
-          className="absolute left-0 right-0 top-0 px-4"
+          // En la lista lleva fondo sólido para que las filas no se vean por detrás al hacer scroll.
+          className={`absolute left-0 right-0 top-0 px-4 ${vista === 'lista' ? 'bg-fondo pb-2' : ''}`}
         >
           <View className="flex-row items-center justify-between rounded-2xl border border-borde bg-superficie/95 p-3.5 shadow-lg backdrop-blur-md">
             <View>
               <Text className="text-base font-extrabold text-texto">
-                Mecánicos cerca tuyo
+                {vista === 'mapa' ? 'Talleres cerca tuyo' : 'Mecánicos cerca tuyo'}
               </Text>
               <Text className="text-micro font-medium text-texto-tenue">
                 {cargando
                   ? 'Buscando prestadores en la zona...'
                   : errorCarga
                     ? 'No se pudo cargar la lista'
-                    : mecánicosFiltrados.length === 0
+                    : mecanicosFiltrados.length === 0
                       ? 'Sin resultados para este filtro'
-                      : `${mecánicosFiltrados.length} talleres disponibles`}
+                      : vista === 'mapa'
+                        ? `${mecanicosFiltrados.length} talleres en el mapa`
+                        : `${mecanicosFiltrados.length} mecánicos, con taller o en ruta`}
               </Text>
             </View>
 
             {cargando ? (
-              <ActivityIndicator color="#FFC107" size="small" />
+              <ActivityIndicator color={COLORES.acento} size="small" />
             ) : (
               <Pressable
                 onPress={cargarMecanicos}
@@ -243,9 +304,13 @@ export default function MapaScreen() {
                 hitSlop={8}
                 className="h-8 w-8 items-center justify-center rounded-full bg-superficie-alta active:opacity-70"
               >
-                <Ionicons name="reload" size={16} color="#FFC107" />
+                <Ionicons name="reload" size={16} color={COLORES.acento} />
               </Pressable>
             )}
+          </View>
+
+          <View className="mt-2.5">
+            <Conmutador opciones={OPCIONES_VISTA} valor={vista} onCambio={cambiarVista} />
           </View>
 
           {/* Barra de Filtros por Especialidad */}
@@ -276,7 +341,7 @@ export default function MapaScreen() {
           {permisoDenegado ? (
             <View className="mt-2.5 flex-row items-center justify-between rounded-xl border border-acento/30 bg-superficie p-2.5">
               <View className="flex-1 flex-row items-center gap-2">
-                <Ionicons name="warning-outline" size={17} color="#FFC107" />
+                <Ionicons name="warning-outline" size={17} color={COLORES.acento} />
                 <Text className="flex-1 text-mini text-texto-tenue">
                   GPS inactivo. Mostrando zona por defecto.
                 </Text>
@@ -295,7 +360,7 @@ export default function MapaScreen() {
         </View>
 
         {/* Botón flotante para re-centrar en el usuario (FAB) */}
-        <View className="absolute bottom-6 right-5">
+        <View className={vista === 'mapa' ? 'absolute bottom-6 right-5' : 'hidden'}>
           <Pressable
             testID="btn-centrar-usuario"
             accessibilityRole="button"
@@ -306,26 +371,26 @@ export default function MapaScreen() {
             style={{ width: 50, height: 50 }}
           >
             {buscandoGps ? (
-              <ActivityIndicator size="small" color="#FFC107" />
+              <ActivityIndicator size="small" color={COLORES.acento} />
             ) : (
               <Ionicons
                 name="locate"
                 size={24}
-                color={ubicacionUsuario ? '#FFC107' : '#9CA3AF'}
+                color={ubicacionUsuario ? COLORES.acento : COLORES.textoTenue}
               />
             )}
           </Pressable>
         </View>
 
         {/* Banner de lista vacía en mapa cuando un filtro no tiene talleres (RF-UX-003) */}
-        {!cargando && !errorCarga && mecánicosFiltrados.length === 0 ? (
+        {vista === 'mapa' && !cargando && !errorCarga && mecanicosFiltrados.length === 0 ? (
           <View
             testID="estado-vacio-mapa"
             className="absolute bottom-24 left-4 right-4 rounded-2xl border border-borde bg-superficie/95 p-4 shadow-xl backdrop-blur-md"
           >
             <View className="flex-row items-center gap-3">
               <View className="h-10 w-10 items-center justify-center rounded-full bg-superficie-alta">
-                <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+                <Ionicons name="search-outline" size={20} color={COLORES.textoTenue} />
               </View>
               <View className="flex-1">
                 <Text className="text-sm font-bold text-texto">
@@ -355,7 +420,7 @@ export default function MapaScreen() {
           >
             <View className="flex-row items-center gap-3">
               <View className="h-10 w-10 items-center justify-center rounded-full bg-peligro/15">
-                <Ionicons name="alert-circle-outline" size={20} color="#EF4444" />
+                <Ionicons name="alert-circle-outline" size={20} color={COLORES.peligro} />
               </View>
               <View className="flex-1">
                 <Text className="text-sm font-bold text-texto">Error de conexión</Text>
