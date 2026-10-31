@@ -82,7 +82,8 @@ export function BarraInferior({ state }: BarraInferiorProps = {}) {
         testID={`pestania-${pestania.nombre}`}
         accessibilityRole="tab"
         accessibilityState={{ selected: activa }}
-        accessibilityLabel={pestania.etiqueta}
+        accessibilityLabel={`Pestaña ${pestania.etiqueta}`}
+        accessibilityHint={`Navega a la pantalla de ${pestania.etiqueta}`}
         onPress={() => irA(pestania.nombre)}
         className="min-h-[44px] flex-1 items-center justify-center gap-1 py-2 active:opacity-60">
         <Ionicons
@@ -111,7 +112,8 @@ export function BarraInferior({ state }: BarraInferiorProps = {}) {
         <Pressable
           testID="btn-sos"
           accessibilityRole="button"
-          accessibilityLabel="SOS: solicitar asistencia"
+          accessibilityLabel="SOS: solicitar asistencia mecánica de emergencia"
+          accessibilityHint="Abre el formulario para solicitar asistencia técnica inmediata"
           onPress={() => router.push('/solicitud/nueva')}
           className="-mt-8 h-16 w-16 items-center justify-center rounded-full border-4 border-fondo bg-acento active:bg-acento-oscuro">
           <Ionicons name="warning" size={26} color="#0B0B0D" />

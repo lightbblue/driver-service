@@ -78,7 +78,9 @@ export function DetalleMecanicoModal({ mecanico, onCerrar }: DetalleMecanicoModa
 
                 <Pressable
                   onPress={onCerrar}
-                  accessibilityLabel="Cerrar detalles"
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar detalles del mecánico"
+                  accessibilityHint="Cierra esta ventana modal"
                   hitSlop={8}
                   className="h-8 w-8 items-center justify-center rounded-full bg-superficie-alta active:opacity-70"
                 >
@@ -131,7 +133,8 @@ export function DetalleMecanicoModal({ mecanico, onCerrar }: DetalleMecanicoModa
                   <Pressable
                     onPress={llamar}
                     accessibilityRole="button"
-                    accessibilityLabel="Llamar al taller"
+                    accessibilityLabel={`Llamar al taller ${mecanico.nombre_taller}`}
+                    accessibilityHint={`Inicia una llamada telefónica al número ${mecanico.telefono}`}
                     className="flex-1 flex-row items-center justify-center gap-2 rounded-campo border border-borde bg-superficie-alta py-3.5 active:bg-superficie"
                   >
                     <Ionicons name="call-outline" size={19} color="#FFC107" />
@@ -143,6 +146,8 @@ export function DetalleMecanicoModal({ mecanico, onCerrar }: DetalleMecanicoModa
                   <Boton
                     titulo="Solicitar asistencia"
                     icono="warning-outline"
+                    accessibilityLabel={`Solicitar asistencia a ${mecanico.nombre_taller}`}
+                    accessibilityHint="Abre el formulario para solicitar auxilio mecánico a este taller"
                     onPress={solicitarAuxilio}
                   />
                 </View>

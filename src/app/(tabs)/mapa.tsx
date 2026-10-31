@@ -228,7 +228,9 @@ export default function MapaScreen() {
             ) : (
               <Pressable
                 onPress={cargarMecanicos}
+                accessibilityRole="button"
                 accessibilityLabel="Actualizar lista de mecánicos"
+                accessibilityHint="Recarga los talleres disponibles en la zona"
                 hitSlop={8}
                 className="h-8 w-8 items-center justify-center rounded-full bg-superficie-alta active:opacity-70"
               >
@@ -249,6 +251,12 @@ export default function MapaScreen() {
                 <Chip
                   texto={item}
                   activo={especialidadSeleccionada === item}
+                  accessibilityLabel={`Filtrar por: ${item}`}
+                  accessibilityHint={
+                    especialidadSeleccionada === item
+                      ? 'Filtro actualmente aplicado'
+                      : `Muestra solo mecánicos con especialidad en ${item}`
+                  }
                   onPress={() => setEspecialidadSeleccionada(item)}
                 />
               )}
@@ -266,6 +274,9 @@ export default function MapaScreen() {
               </View>
               <Pressable
                 onPress={obtenerPosicionUsuario}
+                accessibilityRole="button"
+                accessibilityLabel="Activar permisos de GPS"
+                accessibilityHint="Permite acceder a tu ubicación actual para ver mecánicos cercanos"
                 className="rounded-lg bg-acento/10 px-2 py-1"
               >
                 <Text className="text-mini font-bold text-acento">Activar</Text>
@@ -280,6 +291,7 @@ export default function MapaScreen() {
             testID="btn-centrar-usuario"
             accessibilityRole="button"
             accessibilityLabel="Centrar mapa en mi ubicación"
+            accessibilityHint="Mueve la vista del mapa a tu posición GPS actual"
             onPress={centrarEnUsuario}
             className="h-13 w-13 items-center justify-center rounded-full border border-borde bg-superficie shadow-xl active:bg-superficie-alta"
             style={{ width: 50, height: 50 }}
