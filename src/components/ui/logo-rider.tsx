@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
+import { COLORES } from '@/lib/tema';
 
 type LogoRiderProps = {
   tamanio?: 'chico' | 'mediano' | 'grande';
@@ -21,7 +22,7 @@ const ICONO = { chico: 20, mediano: 26, grande: 44 } as const;
 export function LogoRider({ tamanio = 'mediano', conLema = true, className }: LogoRiderProps) {
   return (
     <View className={cn('flex-row items-center gap-2', className)}>
-      <Ionicons name="shield-half" size={ICONO[tamanio]} color="#FFC107" />
+      <Ionicons name="shield-half" size={ICONO[tamanio]} color={COLORES.acento} />
       <View>
         <Text className={cn('font-black tracking-wide text-texto', TITULO[tamanio])}>
           RIDER <Text className="text-acento">SERVICE</Text>

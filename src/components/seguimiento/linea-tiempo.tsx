@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { cn } from '@/lib/cn';
 import { formatearFechaHora } from '@/lib/formato';
 import { descriptorEstado } from '@/lib/iconos';
+import { COLORES } from '@/lib/tema';
 import { FLUJO_ESTADOS } from '@/services';
 import type { EstadoServicio, HitoServicio, Servicio } from '@/types';
 
@@ -42,7 +43,7 @@ export function LineaTiempo({ servicio }: { servicio: Servicio }) {
                   'h-8 w-8 items-center justify-center rounded-full border',
                   ocurrio ? 'border-transparent bg-superficie-alta' : 'border-borde bg-transparent',
                 )}>
-                <Ionicons name={d.icono} size={16} color={ocurrio ? d.colorIcono : '#6B7280'} />
+                <Ionicons name={d.icono} size={16} color={ocurrio ? d.colorIcono : COLORES.textoSutil} />
               </View>
               {!esUltima ? (
                 <View className={cn('w-0.5 flex-1', ocurrio ? 'bg-borde' : 'bg-superficie-alta')} />

@@ -17,6 +17,7 @@ import { MapaUbicacion } from '@/components/solicitud/mapa-ubicacion';
 import { SelectorCategoria } from '@/components/solicitud/selector-categoria';
 import { Boton, CampoTexto, Cargando, Pantalla, Tarjeta } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
+import { COLORES } from '@/lib/tema';
 import {
   coordenadasComoTexto,
   crearSolicitud,
@@ -161,7 +162,7 @@ export default function NuevaSolicitudScreen() {
             onPress={retroceder}
             className="mr-3 h-10 w-10 items-center justify-center rounded-full active:opacity-60"
           >
-            <Ionicons name="arrow-back" size={23} color="#F9FAFB" />
+            <Ionicons name="arrow-back" size={23} color={COLORES.texto} />
           </Pressable>
 
           <View className="flex-1">
@@ -241,7 +242,7 @@ export default function NuevaSolicitudScreen() {
                   <Text className="text-mini font-bold text-acento">
                     {buscandoGps ? 'Buscando...' : 'Usar mi ubicación'}
                   </Text>
-                  <Ionicons name="locate" size={17} color="#FFC107" />
+                  <Ionicons name="locate" size={17} color={COLORES.acento} />
                 </Pressable>
               </View>
 
@@ -253,7 +254,7 @@ export default function NuevaSolicitudScreen() {
 
               {errorGps && !ubicacion ? (
                 <Tarjeta className="flex-row gap-3 border-acento/40 p-3">
-                  <Ionicons name="alert-circle-outline" size={19} color="#FFC107" />
+                  <Ionicons name="alert-circle-outline" size={19} color={COLORES.acento} />
                   <Text className="flex-1 text-chico text-texto">{errorGps}</Text>
                 </Tarjeta>
               ) : null}
@@ -377,7 +378,7 @@ function FilaResumen({
 }) {
   return (
     <View className="flex-row gap-3">
-      <Ionicons name={icono} size={19} color="#9CA3AF" />
+      <Ionicons name={icono} size={19} color={COLORES.textoTenue} />
       <View className="flex-1">
         <Text className="text-mini font-bold uppercase tracking-wide text-texto-tenue">
           {titulo}
@@ -387,5 +388,4 @@ function FilaResumen({
     </View>
   );
 }
-
 

@@ -5,6 +5,8 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { COLORES } from '@/lib/tema';
+
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync();
@@ -26,7 +28,7 @@ export default function RootLayout() {
         <ThemeProvider value={DarkTheme}>
           <StatusBar style="light" />
           <Stack
-            screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0B0B0D' } }}>
+            screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORES.fondo } }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />

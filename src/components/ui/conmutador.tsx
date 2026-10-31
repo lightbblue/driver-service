@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
+import { COLORES } from '@/lib/tema';
 
 export type OpcionConmutador<T extends string> = {
   valor: T;
@@ -37,7 +38,7 @@ export function Conmutador<T extends string>({ opciones, valor, onCambio }: Conm
             <Ionicons
               name={opcion.icono}
               size={17}
-              color={activa ? '#0B0B0D' : '#9CA3AF'}
+              color={activa ? COLORES.textoInverso : COLORES.textoTenue}
             />
             <Text
               className={cn(

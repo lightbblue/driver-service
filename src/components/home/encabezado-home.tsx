@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 
 import { Avatar, LogoRider } from '@/components/ui';
+import { COLORES } from '@/lib/tema';
 import type { Perfil } from '@/types';
 
 type EncabezadoHomeProps = {
@@ -30,7 +31,7 @@ export function EncabezadoHome({ usuario, onPressPerfil }: EncabezadoHomeProps) 
           accessibilityLabel="Notificaciones"
           hitSlop={8}
           className="h-10 w-10 items-center justify-center rounded-full bg-superficie active:bg-superficie-alta">
-          <Ionicons name="notifications-outline" size={19} color="#FFFFFF" />
+          <Ionicons name="notifications-outline" size={19} color={COLORES.texto} />
           <View className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-peligro" />
         </Pressable>
 
@@ -49,7 +50,7 @@ export function EncabezadoHome({ usuario, onPressPerfil }: EncabezadoHomeProps) 
               {ROLES[usuario?.rol ?? 'cliente'] ?? 'Usuario'}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={13} color="#9CA3AF" />
+          <Ionicons name="chevron-forward" size={13} color={COLORES.textoTenue} />
         </Pressable>
       </View>
     </View>

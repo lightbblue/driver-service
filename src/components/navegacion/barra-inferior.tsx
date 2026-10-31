@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { cn } from '@/lib/cn';
+import { COLORES } from '@/lib/tema';
 
 type Pestania = {
   nombre: string;
@@ -52,7 +53,7 @@ export function BarraInferior({ state, navigateToTab }: BottomTabBarProps) {
         <Ionicons
           name={activa ? pestania.iconoActivo : pestania.icono}
           size={22}
-          color={activa ? '#FFC107' : '#9CA3AF'}
+          color={activa ? COLORES.acento : COLORES.textoTenue}
         />
         <Text
           className={cn(
@@ -78,7 +79,7 @@ export function BarraInferior({ state, navigateToTab }: BottomTabBarProps) {
           accessibilityLabel="SOS: solicitar asistencia"
           onPress={() => router.push('/solicitud/nueva')}
           className="-mt-8 h-16 w-16 items-center justify-center rounded-full border-4 border-fondo bg-acento active:bg-acento-oscuro">
-          <Ionicons name="warning" size={26} color="#0B0B0D" />
+          <Ionicons name="warning" size={26} color={COLORES.textoInverso} />
           <Text className="text-micro font-black text-texto-inverso">SOS</Text>
         </Pressable>
       </View>

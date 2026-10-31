@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
 import { iconoDeCategoria } from '@/lib/iconos';
+import { COLORES } from '@/lib/tema';
 import type { CategoriaAveria } from '@/types';
 
 type SelectorCategoriaProps = {
@@ -39,7 +40,7 @@ export function SelectorCategoria({
             <Ionicons
               name={iconoDeCategoria(categoria.icono)}
               size={26}
-              color={activa ? '#FFC107' : '#FFFFFF'}
+              color={activa ? COLORES.acento : COLORES.texto}
             />
             <Text
               className={cn(
