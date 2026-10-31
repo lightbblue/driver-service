@@ -25,7 +25,7 @@ const PESTANIAS: Pestania[] = [
  * Barra de navegación inferior con el botón SOS central (RF-VIEW-011).
  * El SOS no es una pestaña: es un acceso directo al flujo de solicitud.
  */
-export function BarraInferior({ state, navigation }: BottomTabBarProps) {
+export function BarraInferior({ state, navigateToTab }: BottomTabBarProps) {
   const router = useRouter();
   const { bottom } = useSafeAreaInsets();
 
@@ -34,7 +34,7 @@ export function BarraInferior({ state, navigation }: BottomTabBarProps) {
   const irA = (nombre: string) => {
     const destino = state.routes.find((r) => r.name === nombre);
     if (!destino) return;
-    navigation.navigate(destino.name as never);
+    navigateToTab(destino.key);
   };
 
   const renderPestania = (pestania: Pestania) => {
