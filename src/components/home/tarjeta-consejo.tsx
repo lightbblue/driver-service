@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Text, View } from 'react-native';
 
+import { COLORES } from '@/lib/tema';
 import type { Consejo } from '@/types';
 
 /**
@@ -22,7 +23,7 @@ export function TarjetaConsejo({ consejo }: { consejo: Consejo }) {
             transition={250}
           />
         ) : (
-          <Ionicons name="image-outline" size={28} color="#6B7280" />
+          <Ionicons name="image-outline" size={28} color={COLORES.textoSutil} />
         )}
       </View>
 

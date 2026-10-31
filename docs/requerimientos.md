@@ -345,7 +345,7 @@ con un cálculo de la app. La función:
 
 | ID | Requisito | Prioridad | Estado | Criterio de aceptación |
 |---|---|---|---|---|
-| RNF-UX-001 | Sistema de diseño consistente | MUST | 🟡 | Tema en `tailwind.config.js`; los colores para íconos salen de `src/lib/tema.ts`. Pendiente: quitar los hex que quedan en los componentes. |
+| RNF-UX-001 | Sistema de diseño consistente | MUST | ✅ | Tema en `tailwind.config.js`; los colores para íconos y estilos dinámicos salen de `src/lib/tema.ts`, sin colores hexadecimales escritos en las pantallas ni los componentes. |
 | RNF-UX-002 | Fidelidad a la maqueta | MUST | ✅ | |
 | RNF-UX-003 | Estados de carga, vacío y error | MUST | ✅ | Ninguna pantalla queda en blanco. |
 | RNF-UX-004 | Respuesta táctil de los controles | MUST | ✅ | |
