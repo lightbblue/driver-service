@@ -110,7 +110,24 @@ export interface MecanicoAsignado {
   telefono: string | null;
 }
 
-/** Tabla `solicitudes` con su categoría, su mecánico y su historial. */
+/** Tabla `pagos`: cobro simulado centralizado y comisión (RF-PAY-002, RN-012). */
+export interface Pago {
+  id: string;
+  solicitud_id: string;
+  cliente_id: string;
+  mecanico_id: string;
+  monto: number;
+  comision: number;
+  neto_mecanico: number;
+  medio: 'simulado';
+  estado: 'aprobado';
+  creado_en: string;
+}
+
+/** Estado visible del pago (RF-PAY-003, RN-007). */
+export type EstadoPago = 'pendiente' | 'pagado';
+
+/** Tabla `solicitudes` con su categoría, su mecánico, su historial y su pago. */
 export interface Servicio {
   id: string;
   /** Código legible generado por la base: RS-2026-0013 (RF-ASSIST-005). */
@@ -126,6 +143,10 @@ export interface Servicio {
   estado: EstadoServicio;
   eta_minutos: number | null;
   motivo_cancelacion: string | null;
+  /** Monto final en pesos acordado al finalizar (RF-QUOTE-001). */
+  monto_final: number | null;
+  /** Pago registrado, o null si está pendiente de pago (RF-PAY-003). */
+  pago: Pago | null;
   /** Derivado del actor del hito de cancelación. */
   cancelado_por: ActorCancelacion | null;
   creado_en: string;

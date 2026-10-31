@@ -4,6 +4,7 @@ import type {
   ActorCancelacion,
   EstadoServicio,
   HitoServicio,
+  Pago,
   Servicio,
   UbicacionServicio,
 } from '@/types';
@@ -45,10 +46,11 @@ export function siguienteEstadoMecanico(estado: EstadoServicio): EstadoServicio 
 const COLUMNAS = `
   id, codigo, usuario_id, mecanico_id, categoria_id, descripcion,
   direccion, latitud, longitud, estado, eta_minutos, motivo_cancelacion,
-  creado_en, actualizado_en,
+  monto_final, creado_en, actualizado_en,
   categoria:categorias_averia ( nombre, icono ),
   mecanico:mecanicos ( id, nombre, telefono ),
-  historial:historial_solicitudes ( id, estado_anterior, estado, usuario_id, nota, creado_en )
+  historial:historial_solicitudes ( id, estado_anterior, estado, usuario_id, nota, creado_en ),
+  pago:pagos ( id, solicitud_id, cliente_id, mecanico_id, monto, comision, neto_mecanico, medio, estado, creado_en )
 `;
 
 type FilaSolicitud = {
@@ -64,6 +66,7 @@ type FilaSolicitud = {
   estado: EstadoServicio;
   eta_minutos: number | null;
   motivo_cancelacion: string | null;
+  monto_final: number | null;
   creado_en: string;
   actualizado_en: string;
   categoria: { nombre: string; icono: string | null } | null;
@@ -77,6 +80,10 @@ type FilaSolicitud = {
         nota: string | null;
         creado_en: string;
       }[]
+    | null;
+  pago:
+    | Pago
+    | Pago[]
     | null;
 };
 
@@ -100,6 +107,10 @@ function aServicio(fila: FilaSolicitud): Servicio {
       ? 'mecanico'
       : 'cliente';
 
+  const pago: Pago | null = Array.isArray(fila.pago)
+    ? fila.pago[0] ?? null
+    : fila.pago ?? null;
+
   return {
     id: fila.id,
     codigo: fila.codigo,
@@ -118,6 +129,8 @@ function aServicio(fila: FilaSolicitud): Servicio {
     estado: fila.estado,
     eta_minutos: fila.eta_minutos,
     motivo_cancelacion: fila.motivo_cancelacion,
+    monto_final: fila.monto_final !== null && fila.monto_final !== undefined ? Number(fila.monto_final) : null,
+    pago,
     cancelado_por: canceladoPor,
     creado_en: fila.creado_en,
     actualizado_en: fila.actualizado_en,
@@ -226,18 +239,19 @@ export async function crearSolicitud(datos: {
 /**
  * Registra un cambio de estado con su nota mediante `cambiar_estado_solicitud()`:
  * la base valida quién puede hacerlo y la transición (RN-004), y escribe la
- * bitácora (RF-DATA-004).
+ * bitácora (RF-DATA-004). Si el nuevo estado es 'finalizado', exige el monto final (RN-014).
  */
 export async function cambiarEstadoSolicitud(
   id: string,
   estado: EstadoServicio,
-  opciones: { observacion?: string; etaMinutos?: number | null } = {},
+  opciones: { observacion?: string; etaMinutos?: number | null; montoFinal?: number | null } = {},
 ): Promise<void> {
   const { error } = await supabase.rpc('cambiar_estado_solicitud', {
     p_solicitud_id: id,
     p_estado: estado,
     p_nota: opciones.observacion?.trim() || null,
     p_eta_minutos: opciones.etaMinutos ?? null,
+    p_monto_final: opciones.montoFinal ?? null,
   });
 
   if (error) lanzar(error, 'No se pudo actualizar la solicitud');
@@ -265,6 +279,16 @@ export function suscribirseASolicitudes(alCambiar: () => void, id?: string): () 
         event: 'INSERT',
         schema: 'public',
         table: 'historial_solicitudes',
+        ...(id ? { filter: `solicitud_id=eq.${id}` } : {}),
+      },
+      alCambiar,
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'pagos',
         ...(id ? { filter: `solicitud_id=eq.${id}` } : {}),
       },
       alCambiar,
