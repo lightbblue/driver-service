@@ -169,7 +169,7 @@ Una pantalla está terminada cuando:
 | RF-VIEW-002 | Inicio de sesión | MUST | ✅ | Correo y contraseña reales. El botón de Google pasa a ser funcional (RF-AUTH-007). |
 | RF-VIEW-003 | Registro con variantes Usuario y Mecánico | MUST | ✅ | La variante Mecánico incluye taller, ubicación, especialidades y descripción. |
 | RF-VIEW-004 | Inicio | MUST | ✅ | Saludo con el perfil real; mecánicos destacados desde la base; consejos y promociones desde JSON. |
-| RF-VIEW-005 | Perfil | MUST | 🟡 | Datos y foto reales. Pendiente: las estadísticas se muestran en cero. |
+| RF-VIEW-005 | Perfil | MUST | ✅ | Datos, foto y estadísticas reales; la calificación queda como "—" hasta implementar reseñas. |
 | RF-VIEW-006 | Flujo de solicitud en 4 pasos | MUST | 🟡 | Funcional, con GPS. Pendiente: el botón Atrás de Android debe volver al paso anterior. |
 | RF-VIEW-007 | Mecánicos cerca tuyo | SHOULD | ⏳ | Mapa con marcadores, distancia, filtro por especialidad y botón "Ver perfil". |
 | RF-VIEW-008 | Seguimiento de solicitud | MUST (modificado v4) | ✅ | Estado, línea de tiempo de 6 estados, mapa, mecánico, contacto y cancelación. |
@@ -376,7 +376,7 @@ con un cálculo de la app. La función:
 | RNF-REL-002 | Manejo de errores de operación | MUST | ✅ | Una operación fallida nunca se informa como exitosa. |
 | RNF-REL-003 | Persistencia confiable | MUST | ✅ | |
 | RNF-TRACE-001 a 003 | Trazabilidad | MUST | ✅ | Los commits y PR referencian el ID del requisito. |
-| RNF-TEST-002 | Datos de prueba | MUST | 🟡 | Pendiente: más mecánicos de ejemplo en la base. |
+| RNF-TEST-002 | Datos de prueba | MUST | ✅ | Migración idempotente con mecánicos de ejemplo en distintas ubicaciones y especialidades, incluido uno no disponible. |
 | RNF-TEST-003 | Estados determinísticos | MUST | ✅ | `scripts/verificar-supabase.mjs`. |
 | RNF-PRIV-001 | Minimización de datos | MUST | ✅ | |
 | RNF-PRIV-002 | Protección de la ubicación | MUST | ✅ | El permiso se pide al momento de usarla, explicando el motivo. |
