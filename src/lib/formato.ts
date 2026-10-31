@@ -2,6 +2,16 @@
 
 const FECHA = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
 const HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+const MONEDA = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function formatearMoneda(monto: number): string {
+  return MONEDA.format(monto);
+}
 
 export function formatearFecha(iso: string | null): string {
   if (!iso) return '—';

@@ -17,6 +17,7 @@ import { DistintivoEstado } from '@/components/seguimiento/distintivo-estado';
 import { LineaTiempo } from '@/components/seguimiento/linea-tiempo';
 import { Boton, CampoTexto, Cargando, Chip, ListaVacia, Pantalla, Tarjeta } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
+import { formatearMoneda } from '@/lib/formato';
 import {
   cambiarEstadoSolicitud,
   cancelarSolicitud,
@@ -77,6 +78,7 @@ export default function SeguimientoScreen() {
   useEffect(() => suscribirseASolicitudes(recargar, id), [id, recargar]);
 
   const [observacion, setObservacion] = useState('');
+  const [montoFinal, setMontoFinal] = useState('');
   const [eta, setEta] = useState<number | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [motivo, setMotivo] = useState('');
@@ -121,15 +123,30 @@ export default function SeguimientoScreen() {
 
   const avanzarEstado = () => {
     if (!servicio || !proximo) return;
+    let monto: number | null = null;
+    if (proximo === 'finalizado') {
+      if (!/^\d+(?:[.,]\d{1,2})?$/.test(montoFinal.trim())) {
+        Alert.alert('Monto inválido', 'Ingresá el monto final en pesos, con hasta dos decimales.');
+        return;
+      }
+      monto = Number(montoFinal.replace(',', '.'));
+      if (!Number.isFinite(monto) || monto <= 0) {
+        Alert.alert('Monto inválido', 'El monto final debe ser mayor que cero.');
+        return;
+      }
+    }
+
     void ejecutar(
       () =>
         cambiarEstadoSolicitud(servicio.id, proximo, {
           observacion,
           etaMinutos: proximo === 'aceptado' || proximo === 'en_camino' ? eta : null,
+          montoFinal: monto,
         }),
       () => {
         setObservacion('');
         setEta(null);
+        setMontoFinal('');
       },
     );
   };
@@ -270,6 +287,46 @@ export default function SeguimientoScreen() {
               </Tarjeta>
             ) : null}
 
+            {servicio.estado === 'finalizado' ? (
+              <Tarjeta testID="tarjeta-pago" className="gap-3 border-acento/30 p-4">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm font-bold text-texto-tenue">ESTADO DE PAGO</Text>
+                  <Text
+                    testID={`estado-pago-${servicio.estado_pago ?? 'pendiente'}`}
+                    className={`rounded-full border px-2.5 py-0.5 text-mini font-bold ${
+                      servicio.estado_pago === 'pagado'
+                        ? 'border-exito/40 bg-exito/20 text-exito'
+                        : 'border-acento/40 bg-acento/20 text-acento'
+                    }`}>
+                    {servicio.estado_pago === 'pagado' ? 'Pagado' : 'Pendiente de pago'}
+                  </Text>
+                </View>
+
+                {servicio.monto_final != null ? (
+                  <View className="rounded-campo bg-superficie-alta p-3">
+                    <Text className="text-mini text-texto-tenue">Monto final del servicio</Text>
+                    <Text testID="texto-monto-final" className="text-2xl font-black text-texto">
+                      {formatearMoneda(servicio.monto_final)}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {esCliente && servicio.estado_pago !== 'pagado' && servicio.monto_final != null ? (
+                  <Boton
+                    testID="btn-pagar-servicio"
+                    titulo="Pagar servicio"
+                    iconoDerecha="card-outline"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/solicitud/pago',
+                        params: { id: servicio.id },
+                      })
+                    }
+                  />
+                ) : null}
+              </Tarjeta>
+            ) : null}
+
             {/* Acciones del mecánico */}
             {proximo ? (
               <Tarjeta className="gap-3 p-4">
@@ -291,6 +348,18 @@ export default function SeguimientoScreen() {
                       ))}
                     </View>
                   </View>
+                ) : null}
+
+                {proximo === 'finalizado' ? (
+                  <CampoTexto
+                    testID="campo-monto-final"
+                    etiqueta="Monto final del servicio"
+                    placeholder="Monto en pesos (ej. 25000.00)"
+                    value={montoFinal}
+                    onChangeText={setMontoFinal}
+                    keyboardType="decimal-pad"
+                    maxLength={14}
+                  />
                 ) : null}
 
                 <CampoTexto
