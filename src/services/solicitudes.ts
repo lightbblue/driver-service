@@ -4,10 +4,12 @@ import type {
   ActorCancelacion,
   EstadoServicio,
   HitoServicio,
+  Pago,
   Servicio,
   UbicacionServicio,
 } from '@/types';
 
+import { obtenerPagosPorSolicitud } from './pagos';
 import { obtenerUsuarioId } from './sesion';
 
 /** Orden del flujo normal del servicio (sin la cancelación). */
@@ -44,7 +46,7 @@ export function siguienteEstadoMecanico(estado: EstadoServicio): EstadoServicio 
 
 const COLUMNAS = `
   id, codigo, usuario_id, mecanico_id, categoria_id, descripcion,
-  direccion, latitud, longitud, estado, eta_minutos, motivo_cancelacion,
+  direccion, latitud, longitud, estado, eta_minutos, monto_final, motivo_cancelacion,
   creado_en, actualizado_en,
   categoria:categorias_averia ( nombre, icono ),
   mecanico:mecanicos ( id, nombre, telefono ),
@@ -63,6 +65,7 @@ type FilaSolicitud = {
   longitud: number | null;
   estado: EstadoServicio;
   eta_minutos: number | null;
+  monto_final: number | null;
   motivo_cancelacion: string | null;
   creado_en: string;
   actualizado_en: string;
@@ -80,7 +83,7 @@ type FilaSolicitud = {
     | null;
 };
 
-function aServicio(fila: FilaSolicitud): Servicio {
+function aServicio(fila: FilaSolicitud, pago: Pago | null = null): Servicio {
   const historial: HitoServicio[] = (fila.historial ?? [])
     .map((h) => ({
       id: h.id,
@@ -117,8 +120,16 @@ function aServicio(fila: FilaSolicitud): Servicio {
     },
     estado: fila.estado,
     eta_minutos: fila.eta_minutos,
+    monto_final: fila.monto_final,
     motivo_cancelacion: fila.motivo_cancelacion,
     cancelado_por: canceladoPor,
+    estado_pago:
+      fila.estado === 'finalizado'
+        ? pago?.estado === 'aprobado'
+          ? 'pagado'
+          : 'pendiente'
+        : undefined,
+    pago,
     creado_en: fila.creado_en,
     actualizado_en: fila.actualizado_en,
     historial,
@@ -136,7 +147,9 @@ export async function listarSolicitudes(): Promise<Servicio[]> {
     .order('creado_en', { ascending: false });
 
   if (error) lanzar(error, 'No se pudieron cargar tus solicitudes');
-  return (data as unknown as FilaSolicitud[]).map(aServicio);
+  const filas = data as unknown as FilaSolicitud[];
+  const pagos = await obtenerPagosPorSolicitud(filas.map((fila) => fila.id));
+  return filas.map((fila) => aServicio(fila, pagos.get(fila.id) ?? null));
 }
 
 /** Bandeja del mecánico: lo que tiene asignado y lo que espera un mecánico. */
@@ -160,9 +173,12 @@ export async function listarSolicitudesMecanico(
   if (asignadas.error) lanzar(asignadas.error, 'No se pudieron cargar tus servicios');
   if (disponibles.error) lanzar(disponibles.error, 'No se pudieron cargar las solicitudes disponibles');
 
+  const filasAsignadas = asignadas.data as unknown as FilaSolicitud[];
+  const pagos = await obtenerPagosPorSolicitud(filasAsignadas.map((fila) => fila.id));
+
   return {
-    asignadas: (asignadas.data as unknown as FilaSolicitud[]).map(aServicio),
-    disponibles: (disponibles.data as unknown as FilaSolicitud[]).map(aServicio),
+    asignadas: filasAsignadas.map((fila) => aServicio(fila, pagos.get(fila.id) ?? null)),
+    disponibles: (disponibles.data as unknown as FilaSolicitud[]).map((fila) => aServicio(fila)),
   };
 }
 
@@ -174,7 +190,11 @@ export async function obtenerSolicitud(id: string): Promise<Servicio | null> {
     .maybeSingle();
 
   if (error) lanzar(error, 'No se pudo cargar la solicitud');
-  return data ? aServicio(data as unknown as FilaSolicitud) : null;
+  if (!data) return null;
+
+  const fila = data as unknown as FilaSolicitud;
+  const pagos = await obtenerPagosPorSolicitud([fila.id]);
+  return aServicio(fila, pagos.get(fila.id) ?? null);
 }
 
 /** Solicitud en curso del usuario autenticado, si la hay. */
@@ -231,13 +251,18 @@ export async function crearSolicitud(datos: {
 export async function cambiarEstadoSolicitud(
   id: string,
   estado: EstadoServicio,
-  opciones: { observacion?: string; etaMinutos?: number | null } = {},
+  opciones: {
+    observacion?: string;
+    etaMinutos?: number | null;
+    montoFinal?: number | null;
+  } = {},
 ): Promise<void> {
   const { error } = await supabase.rpc('cambiar_estado_solicitud', {
     p_solicitud_id: id,
     p_estado: estado,
     p_nota: opciones.observacion?.trim() || null,
     p_eta_minutos: opciones.etaMinutos ?? null,
+    p_monto_final: opciones.montoFinal ?? null,
   });
 
   if (error) lanzar(error, 'No se pudo actualizar la solicitud');

@@ -94,7 +94,7 @@ EXPO_PUBLIC_SUPABASE_KEY=<publishable / anon key>
 
 ### Puesta en marcha de la base
 
-Las migraciones se ajustan a las tablas que ya existen en Supabase (`solicitudes`, `historial_solicitudes`, `mecanicos`, `categorias_averia`, `perfiles`): solo agregan columnas, funciones y políticas, sin renombrar ni borrar nada.
+Las migraciones se ajustan a las tablas que ya existen en Supabase (`solicitudes`, `historial_solicitudes`, `mecanicos`, `categorias_averia`, `perfiles`): agregan columnas y la tabla nueva `pagos`, y actualizan funciones y políticas sin renombrar ni borrar las tablas existentes.
 
 | Migración | Contenido | Requisitos |
 |---|---|---|
@@ -102,10 +102,13 @@ Las migraciones se ajustan a las tablas que ya existen en Supabase (`solicitudes
 | `…_solicitudes_estados.sql` | Máquina de estados, aceptación atómica, una solicitud activa por cliente, bitácora automática | RF-STATE-001..005, RF-MATCH-003/004, RN-002..005, RN-009, RN-010 |
 | `…_solicitudes_rls.sql` | Políticas RLS, privilegios y Realtime | RF-SEC-001, RN-001, RN-008 |
 | `…_mecanicos_de_prueba.sql` | Talleres de ejemplo en distintas ubicaciones, con especialidades variadas y uno no disponible | RNF-TEST-002 |
+| `…_monto_y_pagos.sql` | Monto final al terminar el servicio, pago simulado único, comisión del 10%, RLS y Realtime | RF-QUOTE-001/002, RF-PAY-001/002/003, RN-007/012/013/014, RNF-SEC-005 |
 
 1. Ejecutar en el **SQL Editor** cada archivo de `supabase/migrations/`, en orden. Son idempotentes.
 2. Comprobar el resultado con `npm run verificar:supabase` (solo lecturas).
 3. `supabase/verificacion.sql` lista columnas, restricciones, políticas RLS y triggers, para revisar el esquema desde el SQL Editor.
+
+Los pagos de esta entrega son simulados: no se ingresan tarjetas ni se realiza un cobro real.
 
 ### Seguimiento del servicio
 
