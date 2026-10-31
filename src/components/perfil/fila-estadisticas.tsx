@@ -10,7 +10,7 @@ type Metrica = {
   etiqueta: string;
 };
 
-/** Fila de estadísticas del perfil, leída de `usuarios.json` (RF-VIEW-005). */
+/** Fila de estadísticas reales del perfil (RF-VIEW-005). */
 export function FilaEstadisticas({ estadisticas }: { estadisticas: EstadisticasPerfil | null }) {
   const metricas: Metrica[] = [
     {
@@ -35,7 +35,7 @@ export function FilaEstadisticas({ estadisticas }: { estadisticas: EstadisticasP
       id: 'miembro',
       icono: 'calendar-outline',
       valor: estadisticas?.miembro_desde ? `Desde ${estadisticas.miembro_desde}` : '—',
-      etiqueta: 'Miembro',
+      etiqueta: 'Antigüedad',
     },
   ];
 

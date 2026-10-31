@@ -2,7 +2,7 @@ import type { User } from '@supabase/supabase-js';
 
 import { lanzar } from '@/lib/errores';
 import { supabase } from '@/lib/supabase';
-import type { Perfil, RolUsuario } from '@/types';
+import type { EstadoServicio, EstadisticasPerfil, Perfil, RolUsuario } from '@/types';
 
 import { obtenerSesion } from './sesion';
 
@@ -20,7 +20,73 @@ function rolDe(usuario: User | null): RolUsuario {
   return rol === 'mecanico' || rol === 'admin' ? rol : 'cliente';
 }
 
-function aPerfil(fila: FilaPerfil, usuario: User | null): Perfil {
+function estadisticasIniciales(creadoEn: string): EstadisticasPerfil {
+  return {
+    solicitudes: 0,
+    resueltas: 0,
+    calificacion: null,
+    miembro_desde: new Date(creadoEn).getFullYear(),
+  };
+}
+
+type FiltroSolicitudes = { usuarioId: string } | { mecanicoId: string };
+
+async function contarSolicitudes(
+  filtro: FiltroSolicitudes,
+  estado?: EstadoServicio,
+): Promise<number> {
+  let consulta = supabase.from('solicitudes').select('id', { count: 'exact', head: true });
+
+  if ('mecanicoId' in filtro) {
+    consulta = consulta.eq('mecanico_id', filtro.mecanicoId);
+  } else {
+    consulta = consulta.eq('usuario_id', filtro.usuarioId);
+  }
+
+  if (estado) consulta = consulta.eq('estado', estado);
+
+  const { count, error } = await consulta;
+  if (error) lanzar(error, 'No se pudieron cargar las estadísticas del perfil');
+  return count ?? 0;
+}
+
+async function obtenerEstadisticas(
+  usuarioId: string,
+  rol: RolUsuario,
+  creadoEn: string,
+): Promise<EstadisticasPerfil> {
+  let filtro: FiltroSolicitudes = { usuarioId };
+
+  if (rol === 'mecanico') {
+    const { data: mecanico, error } = await supabase
+      .from('mecanicos')
+      .select('id')
+      .eq('usuario_id', usuarioId)
+      .maybeSingle();
+
+    if (error) lanzar(error, 'No se pudieron cargar las estadísticas del mecánico');
+    if (!mecanico) return estadisticasIniciales(creadoEn);
+    filtro = { mecanicoId: mecanico.id };
+  }
+
+  const [solicitudes, resueltas] = await Promise.all([
+    contarSolicitudes(filtro),
+    contarSolicitudes(filtro, 'finalizado'),
+  ]);
+
+  return {
+    solicitudes,
+    resueltas,
+    calificacion: null,
+    miembro_desde: new Date(creadoEn).getFullYear(),
+  };
+}
+
+function aPerfil(
+  fila: FilaPerfil,
+  usuario: User | null,
+  estadisticas = estadisticasIniciales(fila.creado_en),
+): Perfil {
   return {
     id: fila.id,
     nombre_completo: fila.nombre || 'Sin nombre',
@@ -31,12 +97,7 @@ function aPerfil(fila: FilaPerfil, usuario: User | null): Perfil {
     localidad: null,
     provincia: null,
     creado_en: fila.creado_en,
-    estadisticas: {
-      solicitudes: 0,
-      resueltas: 0,
-      calificacion: null,
-      miembro_desde: new Date(fila.creado_en).getFullYear(),
-    },
+    estadisticas,
   };
 }
 
@@ -54,7 +115,9 @@ export async function obtenerUsuarioActual(): Promise<Perfil | null> {
   if (error) lanzar(error, 'No se pudo cargar tu perfil');
   if (!data) return null;
 
-  return aPerfil(data as FilaPerfil, sesion.user);
+  const rol = rolDe(sesion.user);
+  const estadisticas = await obtenerEstadisticas(sesion.user.id, rol, data.creado_en);
+  return aPerfil(data as FilaPerfil, sesion.user, estadisticas);
 }
 
 /** Busca un perfil por id. Las políticas RLS solo dejan leer el propio. */
@@ -69,7 +132,11 @@ export async function obtenerUsuario(id: string): Promise<Perfil | null> {
   if (!data) return null;
 
   const sesion = await obtenerSesion();
-  return aPerfil(data as FilaPerfil, sesion?.user.id === id ? sesion.user : null);
+  const usuario = sesion?.user.id === id ? sesion.user : null;
+  const estadisticas = usuario
+    ? await obtenerEstadisticas(id, rolDe(usuario), data.creado_en)
+    : estadisticasIniciales(data.creado_en);
+  return aPerfil(data as FilaPerfil, usuario, estadisticas);
 }
 
 /**
