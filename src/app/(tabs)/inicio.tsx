@@ -9,6 +9,7 @@ import { TarjetaConsejo } from '@/components/home/tarjeta-consejo';
 import { TarjetaMecanico } from '@/components/home/tarjeta-mecanico';
 import { Cargando, EncabezadoSeccion, ListaVacia, Pantalla } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
+import { COLORES } from '@/lib/tema';
 import {
   listarConsejos,
   listarMecanicosDestacados,
@@ -75,12 +76,12 @@ export default function HomeScreen() {
           accessibilityLabel="Solicitar asistencia. Obtené ayuda ahora"
           onPress={() => router.push('/solicitud/nueva')}
           className="mb-5 min-h-[76px] flex-row items-center gap-3 rounded-tarjeta bg-acento px-5 py-4 active:bg-acento-oscuro">
-          <Ionicons name="warning" size={30} color="#0B0B0D" />
+          <Ionicons name="warning" size={30} color={COLORES.textoInverso} />
           <View className="flex-1">
             <Text className="text-lg font-extrabold text-texto-inverso">Solicitar asistencia</Text>
             <Text className="text-chico font-medium text-texto-inverso/75">Obtené ayuda ahora</Text>
           </View>
-          <Ionicons name="chevron-forward" size={22} color="#0B0B0D" />
+          <Ionicons name="chevron-forward" size={22} color={COLORES.textoInverso} />
         </Pressable>
 
         <AccesosRapidos accesos={accesos} />

@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
+import { COLORES } from '@/lib/tema';
+
 type CalificacionProps = {
   puntaje?: number | null;
   resenias?: number | null;
@@ -15,7 +17,7 @@ export function Calificacion({ puntaje, resenias, tamanio = 14 }: CalificacionPr
 
   return (
     <View className="flex-row items-center gap-1">
-      <Ionicons name="star" size={tamanio} color="#FFC107" />
+      <Ionicons name="star" size={tamanio} color={COLORES.acento} />
       <Text className="text-chico font-bold text-texto">{puntaje.toFixed(1)}</Text>
       {resenias != null ? (
         <Text className="text-chico text-texto-tenue">({resenias})</Text>

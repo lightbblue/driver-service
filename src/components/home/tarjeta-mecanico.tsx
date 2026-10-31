@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Avatar, Calificacion, Chip } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { COLORES } from '@/lib/tema';
 import type { Mecanico } from '@/types';
 
 type TarjetaMecanicoProps = {
@@ -47,7 +48,7 @@ export function TarjetaMecanico({ mecanico, onPress, className }: TarjetaMecanic
       </View>
 
       <View className="flex-row items-center gap-1">
-        <Ionicons name="location-outline" size={12} color="#9CA3AF" />
+        <Ionicons name="location-outline" size={12} color={COLORES.textoTenue} />
         <Text className="flex-1 text-mini text-texto-tenue" numberOfLines={1}>
           {mecanico.localidad}
         </Text>

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { cn } from '@/lib/cn';
+import { COLORES } from '@/lib/tema';
 
 type CampoTextoProps = TextInputProps & {
   etiqueta?: string;
@@ -39,13 +40,13 @@ export function CampoTexto({
         )}>
         {icono ? (
           <View className={cn('mr-3', multiline && 'mt-1')}>
-            <Ionicons name={icono} size={18} color={enfocado ? '#FFC107' : '#6B7280'} />
+            <Ionicons name={icono} size={18} color={enfocado ? COLORES.acento : COLORES.textoSutil} />
           </View>
         ) : null}
 
         <TextInput
           className={cn('flex-1 text-base text-texto', multiline && 'min-h-[96px]')}
-          placeholderTextColor="#6B7280"
+          placeholderTextColor={COLORES.textoSutil}
           secureTextEntry={esContrasenia && !visible}
           multiline={multiline}
           textAlignVertical={multiline ? 'top' : 'center'}
@@ -61,7 +62,7 @@ export function CampoTexto({
             hitSlop={12}
             onPress={() => setVisible((v) => !v)}
             className="ml-2 active:opacity-60">
-            <Ionicons name={visible ? 'eye-off-outline' : 'eye-outline'} size={20} color="#9CA3AF" />
+            <Ionicons name={visible ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORES.textoTenue} />
           </Pressable>
         ) : null}
       </View>

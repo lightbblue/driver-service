@@ -5,6 +5,7 @@
  * a diferencia del servidor de teselas de OSM, no exigen un Referer, que el
  * WebView del celular no envía.
  */
+import { COLORES } from '@/lib/tema';
 
 export type Coordenadas = { latitud: number; longitud: number };
 
@@ -37,8 +38,8 @@ export const CSS_PIN = `
   box-sizing: border-box;
   width: 30px; height: 30px;
   border-radius: 50% 50% 50% 0;
-  background: #FFC107;
-  border: 3px solid #0B0B0D;
+  background: ${COLORES.acento};
+  border: 3px solid ${COLORES.fondo};
   transform: rotate(-45deg);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
@@ -46,7 +47,7 @@ export const CSS_PIN = `
   content: '';
   position: absolute; top: 7px; left: 7px;
   width: 10px; height: 10px; border-radius: 50%;
-  background: #0B0B0D;
+  background: ${COLORES.fondo};
 }
 `;
 

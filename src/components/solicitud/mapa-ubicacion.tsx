@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
+import { COLORES } from '@/lib/tema';
+
 import {
   ALTURA_MAPA,
   ATRIBUCION,
@@ -26,7 +28,7 @@ const HTML_MAPA = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-  html, body, #mapa { margin: 0; padding: 0; height: 100%; background: #1F1F25; }
+  html, body, #mapa { margin: 0; padding: 0; height: 100%; background: ${COLORES.superficieAlta}; }
   ${CSS_PIN}
 </style>
 </head>
@@ -132,7 +134,7 @@ export function MapaUbicacion({
 
       {!listo && !fallo ? (
         <View className="absolute inset-0 items-center justify-center bg-superficie-alta">
-          <ActivityIndicator color="#FFC107" />
+          <ActivityIndicator color={COLORES.acento} />
         </View>
       ) : null}
 

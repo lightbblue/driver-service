@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
+import { COLORES } from '@/lib/tema';
 
 export type AccesoRapido = {
   id: string;
@@ -29,7 +30,7 @@ export function AccesosRapidos({ accesos }: { accesos: AccesoRapido[] }) {
               'min-h-[96px] flex-1 items-center justify-center gap-2 rounded-tarjeta border border-borde bg-superficie px-1.5 py-3',
               navegable ? 'active:bg-superficie-alta' : 'active:opacity-70',
             )}>
-            <Ionicons name={acceso.icono} size={22} color="#FFC107" />
+            <Ionicons name={acceso.icono} size={22} color={COLORES.acento} />
             <Text className="text-center text-micro font-semibold leading-[13px] text-texto">
               {acceso.etiqueta}
             </Text>

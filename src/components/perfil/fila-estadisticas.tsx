@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
+import { COLORES } from '@/lib/tema';
 import type { EstadisticasPerfil } from '@/types';
 
 type Metrica = {
@@ -45,7 +46,7 @@ export function FilaEstadisticas({ estadisticas }: { estadisticas: EstadisticasP
         <View key={metrica.id} className="flex-1 flex-row">
           {indice > 0 ? <View className="w-px self-stretch bg-borde" /> : null}
           <View className="flex-1 items-center gap-1 px-1">
-            <Ionicons name={metrica.icono} size={19} color="#FFC107" />
+            <Ionicons name={metrica.icono} size={19} color={COLORES.acento} />
             <Text className="text-center text-sm font-extrabold text-texto" numberOfLines={1}>
               {metrica.valor}
             </Text>

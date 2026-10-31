@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
+import { COLORES } from '@/lib/tema';
+
 const DISTINTIVOS = [
   { id: 'asistencia', icono: 'shield-checkmark-outline', titulo: 'ASISTENCIA\nRÁPIDA' },
   { id: 'region', icono: 'location-outline', titulo: 'EN TODA\nLA REGIÓN' },
@@ -15,7 +17,7 @@ export function Distintivos() {
         <View key={distintivo.id} className="flex-row">
           {indice > 0 ? <View className="mx-1 w-px self-stretch bg-borde" /> : null}
           <View className="w-[104px] items-center gap-1.5 px-1">
-            <Ionicons name={distintivo.icono} size={22} color="#FFC107" />
+            <Ionicons name={distintivo.icono} size={22} color={COLORES.acento} />
             <Text className="text-center text-micro font-bold tracking-wide text-texto">
               {distintivo.titulo}
             </Text>
