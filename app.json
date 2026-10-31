@@ -8,6 +8,10 @@
     "scheme": "riderservice",
     "userInterfaceStyle": "dark",
     "android": {
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#0B0B0D",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -29,6 +33,12 @@
           "backgroundColor": "#0B0B0D",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 120
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permite a Rider Service acceder a tu ubicación para encontrar mecánicos cercanos."
         }
       ]
     ],

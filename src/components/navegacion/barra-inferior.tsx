@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import type { BottomTabBarProps } from 'expo-router/js-tabs';
+import { usePathname, useRouter } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,20 +20,57 @@ const PESTANIAS: Pestania[] = [
   { nombre: 'perfil', etiqueta: 'Perfil', icono: 'person-outline', iconoActivo: 'person' },
 ];
 
+/** Mapeo de rutas Expo Router para cada pestaña. */
+const RUTAS_PESTANIA: Record<string, string> = {
+  inicio: '/(tabs)/inicio',
+  mapa: '/(tabs)/mapa',
+  solicitudes: '/(tabs)/solicitudes',
+  perfil: '/(tabs)/perfil',
+};
+
+export type BarraInferiorProps = {
+  state?: {
+    index: number;
+    routes: Array<{ name: string; key?: string }>;
+  };
+  navigation?: any;
+  descriptors?: any;
+};
+
 /**
  * Barra de navegación inferior con el botón SOS central (RF-VIEW-011).
- * El SOS no es una pestaña: es un acceso directo al flujo de solicitud.
+ * Usa exclusivamente router.navigate() de Expo Router para cambiar de pestaña,
+ * evitando el error "NAVIGATE not handled by any navigator" que ocurre cuando
+ * se usa el objeto navigation de React Navigation con rutas de tabs.
  */
-export function BarraInferior({ state, navigation }: BottomTabBarProps) {
+export function BarraInferior({ state }: BarraInferiorProps = {}) {
   const router = useRouter();
+  const pathname = usePathname();
   const { bottom } = useSafeAreaInsets();
 
-  const rutaActiva = state.routes[state.index]?.name;
+  // Resolver la pestaña activa de forma segura
+  let rutaActiva = state?.routes && state.index != null ? state.routes[state.index]?.name : undefined;
 
+  if (!rutaActiva && pathname) {
+    if (pathname.includes('/mapa')) {
+      rutaActiva = 'mapa';
+    } else if (pathname.includes('/solicitudes')) {
+      rutaActiva = 'solicitudes';
+    } else if (pathname.includes('/perfil')) {
+      rutaActiva = 'perfil';
+    } else {
+      rutaActiva = 'inicio';
+    }
+  }
+
+  /**
+   * Navegar a una pestaña usando Expo Router (estrategia canónica).
+   * router.navigate con la ruta completa `/(tabs)/xxx` garantiza que el
+   * tab navigator maneje la acción correctamente.
+   */
   const irA = (nombre: string) => {
-    const destino = state.routes.find((r) => r.name === nombre);
-    if (!destino) return;
-    navigation.navigate(destino.name as never);
+    const rutaDestino = RUTAS_PESTANIA[nombre] ?? `/(tabs)/${nombre}`;
+    router.navigate(rutaDestino as any);
   };
 
   const renderPestania = (pestania: Pestania) => {

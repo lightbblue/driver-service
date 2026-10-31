@@ -74,7 +74,7 @@ export function MapaUbicacion({
   onInteraccion,
   altura = ALTURA_MAPA,
 }: MapaUbicacionProps) {
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<any>(null);
   /** Última posición que salió del propio mapa: no hace falta recentrarlo. */
   const ultimaRef = useRef<Coordenadas | null>(null);
   const [listo, setListo] = useState(false);
