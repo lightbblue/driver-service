@@ -15,6 +15,7 @@ export {
   crearSolicitud,
   esCancelable,
   esEstadoActivo,
+  finalizarServicio,
   FLUJO_ESTADOS,
   listarSolicitudes,
   listarSolicitudesMecanico,
@@ -30,3 +31,4 @@ export {
   obtenerUsuario,
   obtenerUsuarioActual,
 } from './usuarios';
+export { calcularNetoYComision, obtenerMisGanancias } from './ganancias';

@@ -101,6 +101,9 @@ Las migraciones se ajustan a las tablas que ya existen en Supabase (`solicitudes
 | `…_solicitudes_estructura.sql` | Código `RS-AAAA-NNNN`, tiempo estimado, motivo de cancelación, estado anterior y actor en el historial, vínculo taller ↔ usuario | RF-ASSIST-005, RF-DATA-004 |
 | `…_solicitudes_estados.sql` | Máquina de estados, aceptación atómica, una solicitud activa por cliente, bitácora automática | RF-STATE-001..005, RF-MATCH-003/004, RN-002..005, RN-009, RN-010 |
 | `…_solicitudes_rls.sql` | Políticas RLS, privilegios y Realtime | RF-SEC-001, RN-001, RN-008 |
+| `20261029200531_registro_mecanico.sql` | Especialidades y creación/vinculación del taller al registrar una cuenta mecánica | RF-AUTH-006 |
+| `20261030120000_monto_final.sql` | Columna `solicitudes.monto_final` y validación del importe al finalizar un servicio | RF-STATE-005, RF-QUOTE-001 |
+| `20261030130000_pagos_y_ganancias.sql` | Tabla de pagos, registro de cobro y datos para la pantalla de ganancias | RF-PAY-001, RF-PAY-002, RF-PAY-004, RF-VIEW-015 |
 
 1. Ejecutar en el **SQL Editor** cada archivo de `supabase/migrations/`, en orden. Son idempotentes.
 2. Comprobar el resultado con `npm run verificar:supabase` (solo lecturas).

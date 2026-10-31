@@ -31,6 +31,7 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="solicitud" />
+            <Stack.Screen name="ganancias" />
           </Stack>
         </ThemeProvider>
       </SafeAreaProvider>

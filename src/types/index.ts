@@ -158,3 +158,26 @@ export interface PasoSolicitud {
   numero: number;
   titulo: string;
 }
+
+
+/** Detalle de un servicio cobrado en las ganancias del mecánico (RF-PAY-004, RF-VIEW-015). */
+export interface ServicioCobrado {
+  id: string;
+  solicitud_id: string;
+  codigo_solicitud: string;
+  categoria_nombre: string;
+  fecha_cobro: string;
+  monto_total: number;
+  neto_mecanico: number;
+  comision_plataforma: number;
+  estado_pago: 'aprobado' | 'pendiente' | 'rechazado';
+}
+
+/** Resumen de ganancias acumuladas del mecánico (RF-PAY-004). */
+export interface ResumenGanancias {
+  servicios: ServicioCobrado[];
+  total_a_liquidar: number;
+  total_bruto: number;
+  total_comisiones: number;
+  cantidad_servicios: number;
+}

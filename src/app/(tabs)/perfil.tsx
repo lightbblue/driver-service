@@ -165,6 +165,15 @@ export default function PerfilScreen() {
         <View className="gap-3 px-4 pt-4">
           <FilaEstadisticas estadisticas={usuario?.estadisticas ?? null} />
 
+          <Boton
+            testID="btn-mis-ganancias"
+            titulo="Mis ganancias"
+            variante="primario"
+            icono="cash-outline"
+            iconoDerecha="chevron-forward"
+            onPress={() => router.push('/ganancias')}
+          />
+
           <View className="gap-2.5 pt-1">
             {SECCIONES.map((seccion) => (
               <FilaMenu key={seccion.id} item={seccion} />
