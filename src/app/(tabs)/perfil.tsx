@@ -4,8 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
-import { FilaEstadisticas } from '@/components/perfil/fila-estadisticas';
-import { FilaMenu, type ItemMenu } from '@/components/perfil/fila-menu';
+import { FilaEstadisticas, FilaMenu, type ItemMenu, ModalCerrarSesion } from '@/components/perfil';
 import { Avatar, Boton, Cargando, FondoMarca, LogoRider, Pantalla } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
 import { COLORES } from '@/lib/tema';
@@ -38,11 +37,29 @@ export default function PerfilScreen() {
   const { datos: usuario, cargando, recargar } = useRecurso<Perfil | null>(obtenerUsuarioActual, null);
   const [avatarLocal, setAvatarLocal] = useState<string | null>(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [mostrarModalCierre, setMostrarModalCierre] = useState(false);
+  const [cerrandoSesion, setCerrandoSesion] = useState(false);
 
   // Al volver de "Editar perfil" se vuelven a leer los datos para mostrar los cambios.
   useFocusEffect(recargar);
 
   const localidad = [usuario?.localidad, usuario?.provincia].filter(Boolean).join(', ');
+
+  async function handleConfirmarCierre() {
+    setCerrandoSesion(true);
+    try {
+      await cerrarSesion();
+      setMostrarModalCierre(false);
+      router.replace('/login');
+    } catch (error) {
+      Alert.alert(
+        'No se pudo cerrar la sesión',
+        error instanceof Error ? error.message : 'Ocurrió un error inesperado al cerrar sesión.',
+      );
+    } finally {
+      setCerrandoSesion(false);
+    }
+  }
 
   async function cambiarFoto() {
     if (subiendoFoto) return;
@@ -177,16 +194,18 @@ export default function PerfilScreen() {
             variante="peligro"
             icono="log-out-outline"
             className="mt-2"
-            onPress={() =>
-              cerrarSesion()
-                .then(() => router.replace('/login'))
-                .catch((error: Error) =>
-                  Alert.alert('No se pudo cerrar la sesión', error.message),
-                )
-            }
+            onPress={() => setMostrarModalCierre(true)}
           />
         </View>
       </ScrollView>
+
+      {/* Modal de confirmación para evitar cierres accidentales (RF-AUTH-005) */}
+      <ModalCerrarSesion
+        visible={mostrarModalCierre}
+        cargando={cerrandoSesion}
+        onCancelar={() => setMostrarModalCierre(false)}
+        onConfirmar={handleConfirmarCierre}
+      />
     </Pantalla>
   );
 }
