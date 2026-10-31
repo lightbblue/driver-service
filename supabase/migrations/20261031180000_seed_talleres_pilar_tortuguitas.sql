@@ -49,3 +49,7 @@ from (values
 where not exists (
   select 1 from public.mecanicos m where lower(m.nombre) = lower(t.nombre)
 );
+
+-- Uno no disponible, para probar que no recibe solicitudes y se ve como tal (RNF-TEST-002).
+update public.mecanicos set disponible = false
+where nombre = 'JM Racing' and usuario_id is null;
