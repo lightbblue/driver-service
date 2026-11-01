@@ -17,19 +17,26 @@ const ALTO = 200;
 
 /** Carrusel promocional del Home con indicadores de posición (RF-VIEW-004). */
 export function CarruselPromociones({ promociones }: { promociones: Promocion[] }) {
-  // Ancho real del interior de la tarjeta (sin el borde): así cada foto la cubre entera.
-  const [anchoSlide, setAnchoSlide] = useState(0);
+  // Medidas reales del interior de la tarjeta (sin el borde): así cada foto la cubre entera.
+  // En la web el alto en porcentaje no se resuelve dentro de la lista, por eso se usa en píxeles.
+  const [medidas, setMedidas] = useState({ ancho: 0, alto: 0 });
   const [activo, setActivo] = useState(0);
   const listaRef = useRef<FlatList<Promocion>>(null);
+  const anchoSlide = medidas.ancho;
 
   if (promociones.length === 0) return null;
 
   const alMedir = (evento: LayoutChangeEvent) => {
-    setAnchoSlide(Math.round(evento.nativeEvent.layout.width));
+    const { width, height } = evento.nativeEvent.layout;
+    setMedidas({ ancho: Math.round(width), alto: Math.round(height) });
   };
 
-  const alTerminarScroll = (evento: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (anchoSlide > 0) setActivo(Math.round(evento.nativeEvent.contentOffset.x / anchoSlide));
+  // Se calcula durante el scroll: en la web no existe el evento de fin de inercia.
+  const alDesplazar = (evento: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (anchoSlide === 0) return;
+    const indice = Math.round(evento.nativeEvent.contentOffset.x / anchoSlide);
+    const acotado = Math.min(Math.max(indice, 0), promociones.length - 1);
+    if (acotado !== activo) setActivo(acotado);
   };
 
   const irA = (indice: number) => {
@@ -50,14 +57,16 @@ export function CarruselPromociones({ promociones }: { promociones: Promocion[] 
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={alTerminarScroll}
+          style={{ height: medidas.alto }}
+          onScroll={alDesplazar}
+          scrollEventThrottle={32}
           getItemLayout={(_, index) => ({
             length: anchoSlide,
             offset: anchoSlide * index,
             index,
           })}
           renderItem={({ item }) => (
-            <View style={{ width: anchoSlide, height: '100%' }} className="justify-end">
+            <View style={{ width: anchoSlide, height: medidas.alto }} className="justify-end">
               {item.imagen_url ? (
                 <Image
                   source={{ uri: item.imagen_url }}
