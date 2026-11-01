@@ -106,7 +106,7 @@ export default function HomeScreen() {
         )}
 
         <View className="mt-7">
-          <EncabezadoSeccion titulo="Consejos para tu viaje" accion="Ver todos" />
+          <EncabezadoSeccion titulo="Consejos para tu viaje" />
         </View>
         {consejos.cargando ? (
           <Cargando mensaje="" />
