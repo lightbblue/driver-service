@@ -1,9 +1,5 @@
 /**
  * Configuración compartida por el mapa web (Leaflet) y el nativo (Leaflet en WebView).
- *
- * Las teselas son de CARTO sobre datos de OpenStreetMap: muestran calles y,
- * a diferencia del servidor de teselas de OSM, no exigen un Referer, que el
- * WebView del celular no envía.
  */
 
 export type Coordenadas = { latitud: number; longitud: number };
@@ -18,10 +14,22 @@ export type MapaUbicacionProps = {
   altura?: number;
 };
 
-export const TESELAS = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+// Mapa de calles claro.
+// - Con EXPO_PUBLIC_CARTO_KEY en el .env: CARTO Voyager (pide clave).
+// - Sin clave: Esri World Street Map, que no pide clave ni Referer.
+// Los dos andan igual en el WebView del celular y en la web.
+const CLAVE_CARTO = process.env.EXPO_PUBLIC_CARTO_KEY?.trim();
 
-export const ATRIBUCION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+export const TESELAS = CLAVE_CARTO
+  ? `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${CLAVE_CARTO}`
+  : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+
+export const ATRIBUCION = CLAVE_CARTO
+  ? '&copy; OpenStreetMap &copy; CARTO'
+  : 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap';
+
+/** Zoom máximo con imágenes propias; más cerca, Leaflet amplía las de este nivel. */
+export const ZOOM_MAX_TESELAS = 19;
 
 /** Centro inicial cuando todavía no hay ubicación (Pilar, Buenos Aires). */
 export const CENTRO_POR_DEFECTO: Coordenadas = { latitud: -34.4587, longitud: -58.9142 };

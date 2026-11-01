@@ -13,6 +13,7 @@ import {
   mismaPosicion,
   TESELAS,
   ZOOM_INICIAL,
+  ZOOM_MAX_TESELAS,
   ZOOM_UBICADO,
   type Coordenadas,
   type MapaUbicacionProps,
@@ -43,7 +44,7 @@ export function MapaUbicacion({ ubicacion, onMover, altura = ALTURA_MAPA }: Mapa
 
       const centro: Leaflet.LatLngTuple = [CENTRO_POR_DEFECTO.latitud, CENTRO_POR_DEFECTO.longitud];
       const mapa = L.map(contenedorRef.current).setView(centro, ZOOM_INICIAL);
-      L.tileLayer(TESELAS, { maxZoom: 19, attribution: ATRIBUCION }).addTo(mapa);
+      L.tileLayer(TESELAS, { maxZoom: 19, maxNativeZoom: ZOOM_MAX_TESELAS, attribution: ATRIBUCION }).addTo(mapa);
 
       const marcador = L.marker(centro, {
         draggable: true,

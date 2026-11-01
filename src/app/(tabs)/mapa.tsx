@@ -9,12 +9,11 @@ import {
   Text,
   View,
 } from 'react-native';
-import type MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DetalleMecanicoModal } from '@/components/mapa/detalle-mecanico-modal';
 import { FilaMecanico } from '@/components/mapa/fila-mecanico';
-import { MapaMecanicos } from '@/components/mapa/mapa-mecanicos';
+import { MapaMecanicos, type MapaMecanicosRef } from '@/components/mapa/mapa-mecanicos';
 import { Chip, Conmutador, ListaVacia, Pantalla, type OpcionConmutador } from '@/components/ui';
 import { COLORES } from '@/lib/tema';
 import { listarMecanicos, tieneUbicacion } from '@/services/mecanicos';
@@ -44,7 +43,7 @@ const OPCIONES_VISTA: OpcionConmutador<Vista>[] = [
 export default function MapaScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const mapRef = useRef<MapView | null>(null);
+  const mapRef = useRef<MapaMecanicosRef | null>(null);
   const params = useLocalSearchParams<{ vista?: string }>();
   const vista: Vista = params.vista === 'lista' ? 'lista' : 'mapa';
   const [alturaEncabezado, setAlturaEncabezado] = useState(0);
