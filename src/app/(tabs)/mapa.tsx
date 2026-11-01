@@ -44,7 +44,7 @@ export default function MapaScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const mapRef = useRef<MapaMecanicosRef | null>(null);
-  const params = useLocalSearchParams<{ vista?: string }>();
+  const params = useLocalSearchParams<{ vista?: string; mecanico?: string }>();
   const vista: Vista = params.vista === 'lista' ? 'lista' : 'mapa';
   const [alturaEncabezado, setAlturaEncabezado] = useState(0);
 
@@ -191,6 +191,29 @@ export default function MapaScreen() {
 
   const cambiarVista = (nueva: Vista) => router.setParams({ vista: nueva });
 
+  // Mecánico pedido desde otra pantalla (por ejemplo, un destacado del Inicio): se abre su ficha.
+  const mecanicoPedido = useMemo(
+    () => (params.mecanico ? (mecanicos.find((m) => m.id === params.mecanico) ?? null) : null),
+    [params.mecanico, mecanicos],
+  );
+  const fichaAbierta = mecanicoSeleccionado ?? mecanicoPedido;
+
+  // Si el pedido tiene taller, el mapa se centra en él.
+  useEffect(() => {
+    if (!mecanicoPedido || !tieneUbicacion(mecanicoPedido)) return;
+    mapRef.current?.animateToRegion({
+      latitude: mecanicoPedido.latitud,
+      longitude: mecanicoPedido.longitud,
+      latitudeDelta: 0.03,
+      longitudeDelta: 0.03,
+    });
+  }, [mecanicoPedido]);
+
+  const cerrarFicha = () => {
+    setMecanicoSeleccionado(null);
+    if (params.mecanico) router.setParams({ mecanico: undefined });
+  };
+
   // Abrir la ficha y, si tiene ubicación, centrar el mapa en él
   const seleccionarMecanico = (mecanico: Mecanico) => {
     setMecanicoSeleccionado(mecanico);
@@ -225,7 +248,7 @@ export default function MapaScreen() {
           ref={mapRef}
           mecanicos={talleresFiltrados}
           ubicacionUsuario={ubicacionUsuario}
-          mecanicoSeleccionado={mecanicoSeleccionado}
+          mecanicoSeleccionado={fichaAbierta}
           onSeleccionarMecanico={seleccionarMecanico}
           regionInicial={
             ubicacionUsuario
@@ -439,8 +462,8 @@ export default function MapaScreen() {
 
         {/* Modal / BottomSheet de detalles del mecánico seleccionado */}
         <DetalleMecanicoModal
-          mecanico={mecanicoSeleccionado}
-          onCerrar={() => setMecanicoSeleccionado(null)}
+          mecanico={fichaAbierta}
+          onCerrar={cerrarFicha}
         />
       </View>
     </Pantalla>
