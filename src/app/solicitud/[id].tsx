@@ -15,10 +15,12 @@ import {
 
 import { DistintivoEstado } from '@/components/seguimiento/distintivo-estado';
 import { LineaTiempo } from '@/components/seguimiento/linea-tiempo';
+import { MapaServicio } from '@/components/seguimiento/mapa-servicio';
 import { ResumenPago } from '@/components/seguimiento/resumen-pago';
 import { Boton, CampoTexto, Cargando, Chip, EstadoError, ListaVacia, Pantalla, Tarjeta } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
 import { formatearMoneda } from '@/lib/formato';
+import { COLORES } from '@/lib/tema';
 import {
   cambiarEstadoSolicitud,
   cancelarSolicitud,
@@ -244,29 +246,20 @@ export default function SeguimientoScreen() {
                 </Text>
               ) : null}
 
-              <View className="gap-1">
-                <View className="flex-row items-center gap-1.5">
-                  <Ionicons name="location-outline" size={15} color="#9CA3AF" />
-                  <Text className="flex-1 text-sm text-texto">{servicio.ubicacion.direccion}</Text>
-                </View>
-                <Pressable
-                  accessibilityRole="link"
-                  onPress={() =>
-                    Linking.openURL(
-                      `https://www.openstreetmap.org/?mlat=${servicio.ubicacion.latitud}&mlon=${servicio.ubicacion.longitud}#map=17/${servicio.ubicacion.latitud}/${servicio.ubicacion.longitud}`,
-                    )
-                  }
-                  className="active:opacity-60">
-                  <Text className="text-mini font-semibold text-acento">
-                    Ver en el mapa ({servicio.ubicacion.latitud.toFixed(5)}, {servicio.ubicacion.longitud.toFixed(5)})
-                  </Text>
-                </Pressable>
+              <View className="flex-row items-center gap-1.5">
+                <Ionicons name="location-outline" size={15} color={COLORES.textoTenue} />
+                <Text className="flex-1 text-sm text-texto">{servicio.ubicacion.direccion}</Text>
               </View>
 
               {servicio.descripcion ? (
                 <Text className="text-chico text-texto-tenue">{servicio.descripcion}</Text>
               ) : null}
             </Tarjeta>
+
+            {/* Mapa integrado: ubicación del cliente y, en curso, el mecánico en vivo (RF-GPS-001..005) */}
+            {servicio.estado !== 'cancelada' && servicio.estado !== 'finalizado' ? (
+              <MapaServicio servicio={servicio} esAsignado={esAsignado} />
+            ) : null}
 
             {/* Precio y cobro (RF-QUOTE-002, RF-PAY-003): lo ven el cliente y el mecánico asignado */}
             {esCliente || esAsignado ? (

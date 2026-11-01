@@ -14,6 +14,7 @@ export {
   netoMecanico,
   NOMBRE_MEDIO,
 } from './pagos';
+export { distanciaEntre, obtenerRuta, type Ruta } from './rutas';
 export {
   cerrarSesion,
   escucharSesion,
@@ -36,6 +37,12 @@ export {
   siguienteEstadoMecanico,
   suscribirseASolicitudes,
 } from './solicitudes';
+export {
+  compartirUbicacionMecanico,
+  obtenerUbicacionMecanico,
+  suscribirseAUbicacionMecanico,
+  type Posicion,
+} from './seguimiento-vivo';
 export { coordenadasComoTexto, obtenerDireccion, obtenerUbicacionActual } from './ubicacion';
 export {
   actualizarPerfil,
