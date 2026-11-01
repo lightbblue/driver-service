@@ -11,6 +11,7 @@ import {
   mismaPosicion,
   TESELAS,
   ZOOM_INICIAL,
+  ZOOM_MAX_TESELAS,
   ZOOM_UBICADO,
   type Coordenadas,
   type MapaUbicacionProps,
@@ -38,7 +39,7 @@ const HTML_MAPA = `<!doctype html>
   try {
     var centro = [${CENTRO_POR_DEFECTO.latitud}, ${CENTRO_POR_DEFECTO.longitud}];
     var mapa = L.map('mapa').setView(centro, ${ZOOM_INICIAL});
-    L.tileLayer('${TESELAS}', { maxZoom: 19, attribution: '${ATRIBUCION}' }).addTo(mapa);
+    L.tileLayer('${TESELAS}', { maxZoom: 19, maxNativeZoom: ${ZOOM_MAX_TESELAS}, attribution: '${ATRIBUCION}' }).addTo(mapa);
     var marcador = L.marker(centro, { draggable: true, autoPan: true, icon: L.divIcon(${JSON.stringify(ICONO_PIN)}) }).addTo(mapa);
 
     marcador.on('dragend', function () {
