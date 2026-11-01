@@ -2,8 +2,11 @@ import { lanzar } from '@/lib/errores';
 import { supabase } from '@/lib/supabase';
 import type {
   ActorCancelacion,
+  EstadoPago,
   EstadoServicio,
   HitoServicio,
+  MedioPago,
+  PagoServicio,
   Servicio,
   UbicacionServicio,
 } from '@/types';
@@ -31,7 +34,12 @@ export function esCancelable(estado: EstadoServicio): boolean {
   return ['pendiente', 'aceptado', 'en_camino', 'llegue'].includes(estado);
 }
 
-/** Próximo estado que registra el mecánico asignado, o null si no hay. */
+/**
+ * Próximo estado que registra el mecánico asignado, o null si no hay.
+ * La base agrupa pasos: aceptar deja la solicitud "en camino" y llegar la deja
+ * "trabajando", así que el mecánico ve 3 botones: aceptar, llegué y finalizar.
+ * `aceptado` y `llegue` quedan por si hay solicitudes viejas en esos estados.
+ */
 export function siguienteEstadoMecanico(estado: EstadoServicio): EstadoServicio | null {
   const siguientes: Partial<Record<EstadoServicio, EstadoServicio>> = {
     aceptado: 'en_camino',
@@ -42,14 +50,45 @@ export function siguienteEstadoMecanico(estado: EstadoServicio): EstadoServicio 
   return siguientes[estado] ?? null;
 }
 
+/** RF-PAY-003: situación del cobro que se muestra en el seguimiento y en las listas. */
+export function estadoPago(servicio: Pick<Servicio, 'pago'>): EstadoPago {
+  return servicio.pago?.estado ?? 'sin_cobro';
+}
+
 const COLUMNAS = `
   id, codigo, usuario_id, mecanico_id, categoria_id, descripcion,
   direccion, latitud, longitud, estado, eta_minutos, motivo_cancelacion,
-  creado_en, actualizado_en,
+  monto_final, medio_pago, creado_en, actualizado_en,
   categoria:categorias_averia ( nombre, icono ),
   mecanico:mecanicos ( id, nombre, telefono ),
+  pago:pagos ( id, monto, comision, neto_mecanico, medio, estado, actualizado_en ),
   historial:historial_solicitudes ( id, estado_anterior, estado, usuario_id, nota, creado_en )
 `;
+
+type FilaPago = {
+  id: string;
+  monto: number | string;
+  comision: number | string;
+  neto_mecanico: number | string;
+  medio: PagoServicio['medio'];
+  estado: PagoServicio['estado'];
+  actualizado_en: string;
+};
+
+/** `pagos.solicitud_id` es único, pero PostgREST puede devolver la relación como lista. */
+function aPago(fila: FilaPago | FilaPago[] | null): PagoServicio | null {
+  const pago = Array.isArray(fila) ? fila[0] : fila;
+  if (!pago) return null;
+  return {
+    id: pago.id,
+    monto: Number(pago.monto),
+    comision: Number(pago.comision),
+    neto_mecanico: Number(pago.neto_mecanico),
+    medio: pago.medio,
+    estado: pago.estado,
+    actualizado_en: pago.actualizado_en,
+  };
+}
 
 type FilaSolicitud = {
   id: string;
@@ -64,10 +103,13 @@ type FilaSolicitud = {
   estado: EstadoServicio;
   eta_minutos: number | null;
   motivo_cancelacion: string | null;
+  monto_final: number | string | null;
+  medio_pago: MedioPago;
   creado_en: string;
   actualizado_en: string;
   categoria: { nombre: string; icono: string | null } | null;
   mecanico: { id: string; nombre: string; telefono: string | null } | null;
+  pago: FilaPago | FilaPago[] | null;
   historial:
     | {
         id: string;
@@ -119,6 +161,9 @@ function aServicio(fila: FilaSolicitud): Servicio {
     eta_minutos: fila.eta_minutos,
     motivo_cancelacion: fila.motivo_cancelacion,
     cancelado_por: canceladoPor,
+    monto_final: fila.monto_final == null ? null : Number(fila.monto_final),
+    medio_pago: fila.medio_pago,
+    pago: aPago(fila.pago),
     creado_en: fila.creado_en,
     actualizado_en: fila.actualizado_en,
     historial,
@@ -196,16 +241,18 @@ export async function obtenerSolicitudActiva(): Promise<Servicio | null> {
 
 /**
  * Guarda una solicitud del usuario autenticado (RF-ASSIST-005) y devuelve su
- * id y su código. La base rechaza una segunda solicitud activa (RN-010).
+ * id y su código. La base rechaza una segunda solicitud activa (RN-010), fija el
+ * monto con la tarifa de la categoría y retiene el cobro (o lo deja pendiente si es efectivo).
  */
 export async function crearSolicitud(datos: {
   categoriaId: string;
   descripcion: string;
   ubicacion: UbicacionServicio;
+  medioPago: MedioPago;
 }): Promise<{ id: string; codigo: string }> {
   const usuarioId = await obtenerUsuarioId();
 
-  // Código, estado y mecánico los completa la base.
+  // Código, estado, mecánico, monto y cobro los completa la base.
   const { data, error } = await supabase
     .from('solicitudes')
     .insert({
@@ -215,6 +262,7 @@ export async function crearSolicitud(datos: {
       direccion: datos.ubicacion.direccion.trim(),
       latitud: datos.ubicacion.latitud,
       longitud: datos.ubicacion.longitud,
+      medio_pago: datos.medioPago,
     })
     .select('id, codigo')
     .single();
@@ -226,18 +274,19 @@ export async function crearSolicitud(datos: {
 /**
  * Registra un cambio de estado con su nota mediante `cambiar_estado_solicitud()`:
  * la base valida quién puede hacerlo y la transición (RN-004), y escribe la
- * bitácora (RF-DATA-004).
+ * bitácora (RF-DATA-004). Para pasar a *finalizado* exige el monto final (RN-014).
  */
 export async function cambiarEstadoSolicitud(
   id: string,
   estado: EstadoServicio,
-  opciones: { observacion?: string; etaMinutos?: number | null } = {},
+  opciones: { observacion?: string; etaMinutos?: number | null; montoFinal?: number | null } = {},
 ): Promise<void> {
   const { error } = await supabase.rpc('cambiar_estado_solicitud', {
     p_solicitud_id: id,
     p_estado: estado,
     p_nota: opciones.observacion?.trim() || null,
     p_eta_minutos: opciones.etaMinutos ?? null,
+    p_monto_final: opciones.montoFinal ?? null,
   });
 
   if (error) lanzar(error, 'No se pudo actualizar la solicitud');
@@ -267,6 +316,12 @@ export function suscribirseASolicitudes(alCambiar: () => void, id?: string): () 
         table: 'historial_solicitudes',
         ...(id ? { filter: `solicitud_id=eq.${id}` } : {}),
       },
+      alCambiar,
+    )
+    // RF-PAY-003: el estado del cobro (retenido, cobrado, devuelto) cambia con la solicitud.
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'pagos', ...(id ? { filter: `solicitud_id=eq.${id}` } : {}) },
       alCambiar,
     )
     .subscribe();

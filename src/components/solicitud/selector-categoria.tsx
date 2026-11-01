@@ -2,7 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
+import { formatearMoneda } from '@/lib/formato';
 import { iconoDeCategoria } from '@/lib/iconos';
+import { COLORES } from '@/lib/tema';
 import type { CategoriaAveria } from '@/types';
 
 type SelectorCategoriaProps = {
@@ -11,7 +13,7 @@ type SelectorCategoriaProps = {
   onSeleccionar: (codigo: string) => void;
 };
 
-/** Cuadrícula de tipos de avería. Al tocar una, la anterior se deselecciona. */
+/** Cuadrícula de tipos de avería con su precio fijo. Al tocar una, la anterior se deselecciona. */
 export function SelectorCategoria({
   categorias,
   seleccionada,
@@ -28,7 +30,11 @@ export function SelectorCategoria({
             testID={`categoria-${categoria.codigo}`}
             accessibilityRole="radio"
             accessibilityState={{ selected: activa }}
-            accessibilityLabel={categoria.nombre}
+            accessibilityLabel={
+              categoria.tarifa != null
+                ? `${categoria.nombre}, ${formatearMoneda(categoria.tarifa)}`
+                : categoria.nombre
+            }
             onPress={() => onSeleccionar(categoria.codigo)}
             className={cn(
               'min-h-[92px] w-[23.5%] items-center justify-center gap-2 rounded-campo border px-1 py-3',
@@ -39,7 +45,7 @@ export function SelectorCategoria({
             <Ionicons
               name={iconoDeCategoria(categoria.icono)}
               size={26}
-              color={activa ? '#FFC107' : '#FFFFFF'}
+              color={activa ? COLORES.acento : COLORES.texto}
             />
             <Text
               className={cn(
@@ -49,6 +55,11 @@ export function SelectorCategoria({
               numberOfLines={2}>
               {categoria.nombre}
             </Text>
+            {categoria.tarifa != null ? (
+              <Text className="text-micro font-bold text-texto-tenue">
+                {formatearMoneda(categoria.tarifa)}
+              </Text>
+            ) : null}
           </Pressable>
         );
       })}

@@ -17,6 +17,9 @@ import { MapaUbicacion } from '@/components/solicitud/mapa-ubicacion';
 import { SelectorCategoria } from '@/components/solicitud/selector-categoria';
 import { Boton, CampoTexto, Cargando, Pantalla, Tarjeta } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
+import { cn } from '@/lib/cn';
+import { formatearMoneda } from '@/lib/formato';
+import { COLORES } from '@/lib/tema';
 import {
   coordenadasComoTexto,
   crearSolicitud,
@@ -24,7 +27,28 @@ import {
   obtenerDireccion,
   obtenerUbicacionActual,
 } from '@/services';
-import type { CategoriaAveria, PasoSolicitud, UbicacionServicio } from '@/types';
+import type { CategoriaAveria, MedioPago, PasoSolicitud, UbicacionServicio } from '@/types';
+
+/** Medios de pago al pedir. Mercado Pago es simulado: no pide datos ni cobra dinero real. */
+const MEDIOS_PAGO: {
+  valor: MedioPago;
+  titulo: string;
+  detalle: string;
+  icono: keyof typeof Ionicons.glyphMap;
+}[] = [
+  {
+    valor: 'mercado_pago',
+    titulo: 'Mercado Pago (simulado)',
+    detalle: 'Se retiene ahora y se cobra al finalizar. Si se cancela, se devuelve.',
+    icono: 'wallet-outline',
+  },
+  {
+    valor: 'efectivo',
+    titulo: 'Efectivo',
+    detalle: 'Le pagás al mecánico cuando termina el trabajo.',
+    icono: 'cash-outline',
+  },
+];
 
 const PASOS: PasoSolicitud[] = [
   { numero: 1, titulo: 'Problema' },
@@ -43,6 +67,7 @@ export default function NuevaSolicitudScreen() {
   const [paso, setPaso] = useState(1);
   const [categoria, setCategoria] = useState<string | null>(null);
   const [descripcion, setDescripcion] = useState('');
+  const [medioPago, setMedioPago] = useState<MedioPago>('mercado_pago');
   const [enviando, setEnviando] = useState(false);
 
   /** Coordenadas elegidas: las del GPS o las del pin si el usuario lo movió. */
@@ -133,6 +158,7 @@ export default function NuevaSolicitudScreen() {
         categoriaId: categoriaElegida.id,
         descripcion,
         ubicacion: { ...ubicacion, direccion: direccion.trim() },
+        medioPago,
       });
 
       router.replace({ pathname: '/solicitud/confirmada', params: { id, codigo } });
@@ -347,6 +373,60 @@ export default function NuevaSolicitudScreen() {
                   valor={descripcion.trim() || 'Sin descripción'}
                 />
               </Tarjeta>
+
+              {/* Precio fijo por adelantado: el cliente sabe cuánto paga antes de pedir */}
+              <Tarjeta testID="tarjeta-precio" className="flex-row items-center justify-between gap-3 p-4">
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-texto">Precio del servicio</Text>
+                  <Text className="text-mini text-texto-tenue">
+                    Precio fijo: no cambia aunque el trabajo lleve más tiempo.
+                  </Text>
+                </View>
+                <Text testID="texto-precio" className="text-2xl font-extrabold text-acento">
+                  {formatearMoneda(categoriaElegida?.tarifa ?? null)}
+                </Text>
+              </Tarjeta>
+
+              <View className="gap-2">
+                <Text className="text-sm font-bold text-texto">¿Cómo pagás?</Text>
+                {MEDIOS_PAGO.map((medio) => {
+                  const activo = medioPago === medio.valor;
+                  return (
+                    <Pressable
+                      key={medio.valor}
+                      testID={`medio-${medio.valor}`}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: activo }}
+                      accessibilityLabel={`${medio.titulo}. ${medio.detalle}`}
+                      onPress={() => setMedioPago(medio.valor)}
+                      className={cn(
+                        'flex-row items-center gap-3 rounded-campo border p-3 active:opacity-80',
+                        activo ? 'border-acento bg-acento/10' : 'border-borde bg-superficie',
+                      )}>
+                      <Ionicons
+                        name={medio.icono}
+                        size={22}
+                        color={activo ? COLORES.acento : COLORES.textoTenue}
+                      />
+                      <View className="flex-1">
+                        <Text className="text-sm font-semibold text-texto">{medio.titulo}</Text>
+                        <Text className="text-mini text-texto-tenue">{medio.detalle}</Text>
+                      </View>
+                      <Ionicons
+                        name={activo ? 'radio-button-on' : 'radio-button-off'}
+                        size={20}
+                        color={activo ? COLORES.acento : COLORES.textoSutil}
+                      />
+                    </Pressable>
+                  );
+                })}
+                {medioPago === 'mercado_pago' ? (
+                  <Text className="text-mini text-texto-tenue">
+                    Pago de prueba: no se cobra dinero real. La integración con Mercado Pago queda para
+                    una próxima versión.
+                  </Text>
+                ) : null}
+              </View>
             </View>
           ) : null}
         </ScrollView>
@@ -354,7 +434,13 @@ export default function NuevaSolicitudScreen() {
         <View className="border-t border-borde px-4 pb-4 pt-3">
           <Boton
             testID="btn-continuar"
-            titulo={esUltimoPaso ? 'Confirmar solicitud' : 'Continuar'}
+            titulo={
+              !esUltimoPaso
+                ? 'Continuar'
+                : medioPago === 'mercado_pago' && categoriaElegida?.tarifa != null
+                  ? `Confirmar y pagar ${formatearMoneda(categoriaElegida.tarifa)}`
+                  : 'Confirmar solicitud'
+            }
             iconoDerecha={esUltimoPaso ? 'checkmark' : 'arrow-forward'}
             cargando={enviando}
             deshabilitado={enviando}

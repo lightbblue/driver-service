@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 
-import { formatearFechaHora } from '@/lib/formato';
+import { cn } from '@/lib/cn';
+import { formatearFechaHora, formatearMoneda } from '@/lib/formato';
 import { iconoDeCategoria } from '@/lib/iconos';
+import { ETIQUETA_ESTADO_PAGO } from '@/services';
 import type { Servicio } from '@/types';
 
 import { DistintivoEstado } from './distintivo-estado';
@@ -36,7 +38,27 @@ export function TarjetaSolicitud({ servicio, onPress }: { servicio: Servicio; on
         </Text>
       </View>
 
-      <DistintivoEstado estado={servicio.estado} />
+      <View className="flex-row flex-wrap items-center justify-between gap-2">
+        <DistintivoEstado estado={servicio.estado} />
+        {/* RF-PAY-003: monto y estado del cobro */}
+        {servicio.monto_final != null && servicio.pago ? (
+          <View className="flex-row items-center gap-2">
+            <Text className="text-sm font-bold text-texto">{formatearMoneda(servicio.monto_final)}</Text>
+            <Text
+              testID={`estado-pago-${servicio.id}`}
+              className={cn(
+                'text-mini font-bold',
+                servicio.pago.estado === 'cobrado'
+                  ? 'text-exito'
+                  : servicio.pago.estado === 'retenido' || servicio.pago.estado === 'pendiente'
+                    ? 'text-acento'
+                    : 'text-texto-tenue',
+              )}>
+              {ETIQUETA_ESTADO_PAGO[servicio.pago.estado]}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
