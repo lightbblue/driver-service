@@ -78,6 +78,8 @@ export interface CategoriaAveria {
   nombre: string;
   descripcion: string | null;
   icono: string;
+  /** Precio fijo del servicio en pesos: se muestra antes de pedir. */
+  tarifa: number | null;
   requiere_foto: boolean;
   activo: boolean;
   orden: number;
@@ -111,6 +113,29 @@ export interface MecanicoAsignado {
   telefono: string | null;
 }
 
+/** Cómo paga el cliente: elegido al pedir. Mercado Pago es simulado en esta entrega. */
+export type MedioPago = 'mercado_pago' | 'efectivo';
+
+/**
+ * Situación del cobro (RF-PAY-003). Mercado Pago: retenido → cobrado | devuelto.
+ * Efectivo: pendiente → cobrado | anulado. `sin_cobro`: solicitudes viejas, sin pago.
+ */
+export type EstadoPago = 'sin_cobro' | 'retenido' | 'pendiente' | 'cobrado' | 'devuelto' | 'anulado';
+
+/** Tabla `pagos`: cobro simulado de un servicio con su comisión (RF-PAY-002, RN-012). */
+export interface PagoServicio {
+  id: string;
+  /** Monto total del servicio (la tarifa). */
+  monto: number;
+  /** 10 % para la plataforma. */
+  comision: number;
+  /** 90 % para el mecánico. */
+  neto_mecanico: number;
+  medio: MedioPago;
+  estado: Exclude<EstadoPago, 'sin_cobro'>;
+  actualizado_en: string;
+}
+
 /** Tabla `solicitudes` con su categoría, su mecánico y su historial. */
 export interface Servicio {
   id: string;
@@ -129,6 +154,11 @@ export interface Servicio {
   motivo_cancelacion: string | null;
   /** Derivado del actor del hito de cancelación. */
   cancelado_por: ActorCancelacion | null;
+  /** Tarifa fijada al pedir: el cliente la conoce antes de confirmar. */
+  monto_final: number | null;
+  medio_pago: MedioPago;
+  /** Null solo en solicitudes anteriores al cobro por adelantado. */
+  pago: PagoServicio | null;
   creado_en: string;
   actualizado_en: string;
   /** Ordenado del más antiguo al más reciente. */

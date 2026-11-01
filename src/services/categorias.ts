@@ -12,7 +12,7 @@ const ICONO_ACCIDENTE = 'crash';
 export async function listarCategoriasAveria(): Promise<CategoriaAveria[]> {
   const { data, error } = await supabase
     .from('categorias_averia')
-    .select('id, nombre, descripcion, icono')
+    .select('id, nombre, descripcion, icono, tarifa')
     .order('nombre');
 
   if (error) lanzar(error, 'No se pudieron cargar las categorías');
@@ -23,6 +23,7 @@ export async function listarCategoriasAveria(): Promise<CategoriaAveria[]> {
     nombre: categoria.nombre as string,
     descripcion: categoria.descripcion as string | null,
     icono: categoria.icono as string,
+    tarifa: categoria.tarifa == null ? null : Number(categoria.tarifa),
     requiere_foto: categoria.icono === ICONO_ACCIDENTE,
     activo: true,
     orden: indice + 1,

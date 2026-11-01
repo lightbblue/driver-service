@@ -15,12 +15,16 @@ import {
 
 import { DistintivoEstado } from '@/components/seguimiento/distintivo-estado';
 import { LineaTiempo } from '@/components/seguimiento/linea-tiempo';
+import { ResumenPago } from '@/components/seguimiento/resumen-pago';
 import { Boton, CampoTexto, Cargando, Chip, EstadoError, ListaVacia, Pantalla, Tarjeta } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
+import { formatearMoneda } from '@/lib/formato';
 import {
   cambiarEstadoSolicitud,
   cancelarSolicitud,
   esCancelable,
+  netoMecanico,
+  NOMBRE_MEDIO,
   obtenerMecanicoIdActual,
   obtenerSolicitud,
   obtenerUsuarioId,
@@ -29,11 +33,14 @@ import {
 } from '@/services';
 import type { EstadoServicio, Servicio } from '@/types';
 
-/** Texto del botón con el que el mecánico registra cada etapa. */
+/**
+ * Texto del botón con el que el mecánico registra cada etapa. La base agrupa pasos:
+ * aceptar ya deja la solicitud en camino, y llegar ya inicia el trabajo.
+ */
 const ACCION_MECANICO: Partial<Record<EstadoServicio, string>> = {
-  aceptado: 'Aceptar solicitud',
+  aceptado: 'Aceptar y salir en camino',
   en_camino: 'Salir en camino',
-  llegue: 'Registrar llegada',
+  llegue: 'Llegué, empezar el trabajo',
   trabajando: 'Iniciar trabajo',
   finalizado: 'Finalizar trabajo',
 };
@@ -261,6 +268,11 @@ export default function SeguimientoScreen() {
               ) : null}
             </Tarjeta>
 
+            {/* Precio y cobro (RF-QUOTE-002, RF-PAY-003): lo ven el cliente y el mecánico asignado */}
+            {esCliente || esAsignado ? (
+              <ResumenPago servicio={servicio} esAsignado={esAsignado} />
+            ) : null}
+
             {servicio.estado === 'cancelada' ? (
               <Tarjeta testID="tarjeta-cancelacion" className="gap-1 border-peligro/40 p-4">
                 <Text className="text-sm font-bold text-peligro">
@@ -292,6 +304,19 @@ export default function SeguimientoScreen() {
                         />
                       ))}
                     </View>
+                  </View>
+                ) : null}
+
+                {/* Antes de aceptar: cuánto paga el cliente y cuánto recibe el mecánico */}
+                {proximo === 'aceptado' && servicio.monto_final != null ? (
+                  <View testID="precio-disponible" className="gap-0.5 rounded-campo bg-superficie-alta p-3">
+                    <Text className="text-sm font-bold text-texto">
+                      El cliente paga {formatearMoneda(servicio.monto_final)}
+                    </Text>
+                    <Text className="text-mini text-texto-tenue">
+                      Vos recibís {formatearMoneda(netoMecanico(servicio.monto_final))} (90 %) ·{' '}
+                      {NOMBRE_MEDIO[servicio.medio_pago]}
+                    </Text>
                   </View>
                 ) : null}
 

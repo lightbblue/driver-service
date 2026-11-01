@@ -18,6 +18,19 @@ export function formatearFechaHora(iso: string | null): string {
   return `${formatearFecha(iso)} · ${formatearHora(iso)}`;
 }
 
+const MONEDA = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+/** 15000 → "$ 15.000"; 1234.5 → "$ 1.234,5". */
+export function formatearMoneda(monto: number | null): string {
+  if (monto == null) return '—';
+  return MONEDA.format(monto);
+}
+
 export function formatearDistancia(km: number | null): string {
   if (km == null) return 'Distancia no disponible';
   return `${km.toFixed(1)} km`;

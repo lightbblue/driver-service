@@ -8,6 +8,13 @@ export { listarCategoriasAveria } from './categorias';
 export { listarConsejos, listarPromociones } from './contenido';
 export { listarMecanicos, listarMecanicosDestacados, obtenerMecanico } from './mecanicos';
 export {
+  COMISION_PLATAFORMA,
+  detalleEstadoPago,
+  ETIQUETA_ESTADO_PAGO,
+  netoMecanico,
+  NOMBRE_MEDIO,
+} from './pagos';
+export {
   cerrarSesion,
   escucharSesion,
   obtenerMecanicoIdActual,
@@ -20,6 +27,7 @@ export {
   crearSolicitud,
   esCancelable,
   esEstadoActivo,
+  estadoPago,
   FLUJO_ESTADOS,
   listarSolicitudes,
   listarSolicitudesMecanico,
