@@ -20,6 +20,7 @@ import {
   Pantalla,
   SeparadorO,
 } from '@/components/ui';
+import { useLoginGoogle } from '@/hooks/use-login-google';
 import { iniciarSesion as autenticar } from '@/services';
 
 export default function LoginScreen() {
@@ -29,6 +30,7 @@ export default function LoginScreen() {
   const [contrasenia, setContrasenia] = useState('');
   const [cargando, setCargando] = useState(false);
   const [errorMensaje, setErrorMensaje] = useState('');
+  const { entrarConGoogle, cargandoGoogle } = useLoginGoogle(setErrorMensaje);
 
   const iniciarSesion = async () => {
     if (cargando) return;
@@ -127,7 +129,13 @@ export default function LoginScreen() {
 
             <SeparadorO />
 
-            <BotonGoogle />
+            <BotonGoogle
+              onPress={() => {
+                setErrorMensaje('');
+                void entrarConGoogle();
+              }}
+              cargando={cargandoGoogle}
+            />
           </View>
 
           <View className="flex-row items-center justify-center gap-1">

@@ -17,6 +17,7 @@ import {
   type OpcionConmutador,
 } from '@/components/ui';
 import { UbicacionTaller } from '@/components/registro/ubicacion-taller';
+import { useLoginGoogle } from '@/hooks/use-login-google';
 import { COLORES } from '@/lib/tema';
 import { registrarCuenta } from '@/services';
 import type { UbicacionServicio } from '@/types';
@@ -71,6 +72,10 @@ export default function RegisterScreen() {
   const [descripcion, setDescripcion] = useState('');
   /** Mientras el dedo está sobre el mapa se pausa el scroll del formulario. */
   const [mapaActivo, setMapaActivo] = useState(false);
+
+  const { entrarConGoogle, cargandoGoogle } = useLoginGoogle((mensaje) =>
+    Alert.alert('Google', mensaje),
+  );
 
   const esMecanico = variante === 'mecanico';
   const tieneTaller = esMecanico && modalidad === 'taller';
@@ -320,8 +325,13 @@ export default function RegisterScreen() {
               cargando={cargando}
               deshabilitado={cargando}
             />
-            <SeparadorO />
-            <BotonGoogle />
+            {/* Con Google solo se crean clientes (RN-015): el mecánico necesita el formulario completo. */}
+            {!esMecanico ? (
+              <>
+                <SeparadorO />
+                <BotonGoogle onPress={entrarConGoogle} cargando={cargandoGoogle} />
+              </>
+            ) : null}
           </View>
 
           <View className="flex-row items-center justify-center gap-1">

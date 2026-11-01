@@ -23,6 +23,8 @@ const hayAlmacenamiento = !esWeb || typeof window !== 'undefined';
  */
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
+    // PKCE: Google devuelve un código que se canjea por la sesión (RF-AUTH-007).
+    flowType: 'pkce',
     storage: esWeb ? undefined : AsyncStorage,
     persistSession: hayAlmacenamiento,
     autoRefreshToken: hayAlmacenamiento,
