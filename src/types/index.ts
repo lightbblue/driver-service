@@ -97,7 +97,7 @@ export interface CategoriaAveria {
   nombre: string;
   descripcion: string | null;
   icono: string;
-  /** Precio fijo del servicio en pesos: se muestra antes de pedir. */
+  /** Sin uso: el precio lo propone el mecánico en cada solicitud. */
   tarifa: number | null;
   requiere_foto: boolean;
   activo: boolean;
@@ -202,7 +202,7 @@ export interface TallerOpcion {
   direccion: string;
 }
 
-/** Cómo paga el cliente: elegido al pedir. Mercado Pago es simulado en esta entrega. */
+/** Cómo paga el cliente: lo elige al aceptar el precio del mecánico. Mercado Pago es simulado. */
 export type MedioPago = 'mercado_pago' | 'efectivo';
 
 /**
@@ -264,7 +264,7 @@ export interface Servicio {
   cliente: ClienteSolicitud | null;
   /** A quién se la pidió el cliente desde el mapa. Null: la puede tomar cualquier mecánico (SOS). */
   destino: { tipo: 'taller' | 'mecanico'; id: string; nombre: string } | null;
-  /** Tarifa fijada al pedir: el cliente la conoce antes de confirmar. */
+  /** Precio que propone el mecánico al tomar la solicitud; el cliente lo acepta antes de que salga. */
   monto_final: number | null;
   medio_pago: MedioPago;
   /** Null solo en solicitudes anteriores al cobro por adelantado. */

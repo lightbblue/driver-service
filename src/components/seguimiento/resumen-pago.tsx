@@ -25,10 +25,10 @@ const ESTILO: Record<EstadoPago, { icono: keyof typeof Ionicons.glyphMap; color:
 
 /**
  * Precio del servicio y estado del cobro en el seguimiento (RF-QUOTE-002, RF-PAY-003).
- * El precio se fija al pedir, así que el cliente lo ve desde el principio.
+ * Aparece cuando el cliente aceptó el precio del mecánico y se registró el cobro.
  */
 export function ResumenPago({ servicio, esAsignado }: ResumenPagoProps) {
-  if (servicio.monto_final == null) return null;
+  if (servicio.monto_final == null || !servicio.pago) return null;
 
   const estado = estadoPago(servicio);
   const estilo = ESTILO[estado];

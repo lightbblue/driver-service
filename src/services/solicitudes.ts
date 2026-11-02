@@ -40,13 +40,12 @@ export function esCancelable(estado: EstadoServicio): boolean {
 
 /**
  * Próximo estado que registra el mecánico asignado, o null si no le toca a él.
- * Aceptar deja la solicitud "en camino". Después marca "llegué", y en "llegue" espera:
- * el trabajo empieza recién cuando el cliente confirma la llegada (`confirmarLlegada`).
- * `aceptado` queda por si hay solicitudes viejas en ese estado.
+ * Al aceptar le pone precio y espera ("aceptado"): sale en camino cuando el cliente
+ * acepta el precio (`aceptarPresupuesto`). En "llegue" espera que el cliente confirme
+ * la llegada (`confirmarLlegada`).
  */
 export function siguienteEstadoMecanico(estado: EstadoServicio): EstadoServicio | null {
   const siguientes: Partial<Record<EstadoServicio, EstadoServicio>> = {
-    aceptado: 'en_camino',
     en_camino: 'llegue',
     // El mecánico marca el trabajo terminado; el cliente confirma si quedó resuelto.
     trabajando: 'por_confirmar',
@@ -65,6 +64,47 @@ export async function confirmarLlegada(id: string): Promise<void> {
 /** El cliente confirma que quedó resuelto: se finaliza y recién ahí se cobra. */
 export async function confirmarResolucion(id: string): Promise<void> {
   return cambiarEstadoSolicitud(id, 'finalizado');
+}
+
+/** El mecánico toma la solicitud poniéndole precio. El cliente tiene que aceptarlo. */
+export async function proponerPrecio(id: string, precio: number, etaMinutos: number | null, observacion?: string): Promise<void> {
+  return cambiarEstadoSolicitud(id, 'aceptado', { montoFinal: precio, etaMinutos, observacion });
+}
+
+/**
+ * El cliente acepta el precio y elige cómo pagar: la base registra el cobro
+ * (retenido con Mercado Pago, pendiente en efectivo) y el mecánico sale en camino.
+ */
+export async function aceptarPresupuesto(id: string, medio: MedioPago): Promise<void> {
+  const { error } = await supabase.rpc('aceptar_presupuesto', { p_solicitud_id: id, p_medio: medio });
+  if (error) lanzar(error, 'No se pudo aceptar el precio');
+}
+
+/** El cliente rechaza el precio: la solicitud vuelve a buscar mecánico. */
+export async function rechazarPresupuesto(id: string, motivo?: string): Promise<void> {
+  const { error } = await supabase.rpc('rechazar_presupuesto', {
+    p_solicitud_id: id,
+    p_motivo: motivo?.trim() || null,
+  });
+  if (error) lanzar(error, 'No se pudo rechazar el precio');
+}
+
+/** Precio que el cliente le rechazó al mecánico autenticado en esta solicitud, si hubo. */
+export async function obtenerRechazoPropio(
+  solicitudId: string,
+): Promise<{ monto: number | null; motivo: string; fecha: string } | null> {
+  const { data, error } = await supabase
+    .from('cotizaciones_rechazadas')
+    .select('monto, motivo, creado_en')
+    .eq('solicitud_id', solicitudId)
+    .order('creado_en', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) lanzar(error, 'No se pudo consultar el rechazo del precio');
+  if (!data) return null;
+  const fila = data as { monto: number | string | null; motivo: string; creado_en: string };
+  return { monto: fila.monto == null ? null : Number(fila.monto), motivo: fila.motivo, fecha: fila.creado_en };
 }
 
 /** RF-PAY-003: situación del cobro que se muestra en el seguimiento y en las listas. */
@@ -335,14 +375,13 @@ export async function obtenerSolicitudActiva(): Promise<Servicio | null> {
 
 /**
  * Guarda una solicitud del usuario autenticado (RF-ASSIST-005) y devuelve su
- * id y su código. La base rechaza una segunda solicitud activa (RN-010), fija el
- * monto con la tarifa de la categoría y retiene el cobro (o lo deja pendiente si es efectivo).
+ * id y su código. La base rechaza una segunda solicitud activa (RN-010). Se crea sin
+ * precio: lo propone el mecánico al aceptarla y el cliente lo acepta antes de pagar.
  */
 export async function crearSolicitud(datos: {
   categoriaId: string;
   descripcion: string;
   ubicacion: UbicacionServicio;
-  medioPago: MedioPago;
   /** Auto o moto y su modelo: el mecánico lo ve antes de aceptar. */
   vehiculo: { tipo: TipoVehiculo; modelo: string };
   /** Pedida desde el modal de un taller o de un mecánico en ruta: solo ellos la ven. */
@@ -360,7 +399,6 @@ export async function crearSolicitud(datos: {
       direccion: datos.ubicacion.direccion.trim(),
       latitud: datos.ubicacion.latitud,
       longitud: datos.ubicacion.longitud,
-      medio_pago: datos.medioPago,
       tipo_vehiculo: datos.vehiculo.tipo,
       vehiculo_modelo: datos.vehiculo.modelo.trim() || null,
       taller_solicitado_id: datos.destino?.tipo === 'taller' ? datos.destino.id : null,
