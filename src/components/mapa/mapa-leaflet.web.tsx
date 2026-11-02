@@ -43,8 +43,15 @@ export const MapaLeaflet = forwardRef<MapaLeafletRef, MapaLeafletProps>(function
     alTocarRef.current = onTocarMarcador;
   }, [onTocarMarcador]);
 
+  // Si piden volar antes de que Leaflet termine de cargar, se guarda y se hace al estar listo.
+  const vueloPendienteRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
+
   useImperativeHandle(ref, () => ({
-    volarA: (destino, zoom) => escenaRef.current?.volar(destino.latitud, destino.longitud, zoom ?? 0),
+    volarA: (destino, zoom) => {
+      const vuelo = { lat: destino.latitud, lng: destino.longitud, zoom: zoom ?? 0 };
+      if (escenaRef.current) escenaRef.current.volar(vuelo.lat, vuelo.lng, vuelo.zoom);
+      else vueloPendienteRef.current = vuelo;
+    },
   }));
 
   useEffect(() => {
@@ -56,6 +63,11 @@ export const MapaLeaflet = forwardRef<MapaLeafletRef, MapaLeafletProps>(function
       escenaRef.current = crearEscena(L, contenedorRef.current, opcionesEscena(centro, zoom), (mensaje) => {
         if (mensaje.tipo === 'marcador' && mensaje.id) alTocarRef.current?.(mensaje.id);
       });
+      const pendiente = vueloPendienteRef.current;
+      if (pendiente) {
+        vueloPendienteRef.current = null;
+        escenaRef.current.volar(pendiente.lat, pendiente.lng, pendiente.zoom);
+      }
       setListo(true);
     })();
     return () => {

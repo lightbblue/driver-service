@@ -14,6 +14,7 @@ import {
   listarMecanicosDestacados,
   listarPromociones,
   obtenerUsuarioActual,
+  tieneUbicacion,
 } from '@/services';
 import type { Consejo, Mecanico, Perfil, Promocion } from '@/types';
 
@@ -101,12 +102,23 @@ export default function HomeScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerClassName="gap-3 pb-1 pr-4"
-            renderItem={({ item }) => <TarjetaMecanico mecanico={item} />}
+            renderItem={({ item }) => (
+              <TarjetaMecanico
+                mecanico={item}
+                // Con taller abre el mapa centrado en él; sin taller, la lista. En los dos casos se abre su ficha.
+                onPress={() =>
+                  router.push({
+                    pathname: '/mapa',
+                    params: { vista: tieneUbicacion(item) ? 'mapa' : 'lista', mecanico: item.id },
+                  })
+                }
+              />
+            )}
           />
         )}
 
         <View className="mt-7">
-          <EncabezadoSeccion titulo="Consejos para tu viaje" accion="Ver todos" />
+          <EncabezadoSeccion titulo="Consejos para tu viaje" />
         </View>
         {consejos.cargando ? (
           <Cargando mensaje="" />

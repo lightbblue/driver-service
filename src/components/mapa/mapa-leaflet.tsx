@@ -8,11 +8,18 @@ import {
   CUERPO_ESCENA,
   estadoEscena,
   opcionesEscena,
+  type Coordenadas,
   type MapaLeafletProps,
   type MapaLeafletRef,
 } from './mapa-escena';
 
 type Mensaje = { tipo: 'listo' } | { tipo: 'error'; mensaje: string } | { tipo: 'marcador'; id: string };
+
+function volarEnMapa(webView: WebView<object> | null, destino: Coordenadas, zoom: number) {
+  webView?.injectJavaScript(
+    `window.escena && window.escena.volar(${destino.latitud}, ${destino.longitud}, ${zoom}); true;`,
+  );
+}
 
 function htmlMapa(opciones: ReturnType<typeof opcionesEscena>): string {
   return `<!doctype html>
@@ -55,12 +62,22 @@ export const MapaLeaflet = forwardRef<MapaLeafletRef, MapaLeafletProps>(function
     alTocarRef.current = onTocarMarcador;
   }, [onTocarMarcador]);
 
+  // Si piden volar antes de que el mapa termine de cargar, se guarda y se hace al estar listo.
+  const vueloPendienteRef = useRef<{ destino: Coordenadas; zoom: number } | null>(null);
+
   useImperativeHandle(ref, () => ({
-    volarA: (destino, zoom) =>
-      webViewRef.current?.injectJavaScript(
-        `window.escena && window.escena.volar(${destino.latitud}, ${destino.longitud}, ${zoom ?? 0}); true;`,
-      ),
+    volarA: (destino, zoom) => {
+      if (listo) volarEnMapa(webViewRef.current, destino, zoom ?? 0);
+      else vueloPendienteRef.current = { destino, zoom: zoom ?? 0 };
+    },
   }));
+
+  useEffect(() => {
+    const pendiente = vueloPendienteRef.current;
+    if (!listo || !pendiente) return;
+    vueloPendienteRef.current = null;
+    volarEnMapa(webViewRef.current, pendiente.destino, pendiente.zoom);
+  }, [listo]);
 
   useEffect(() => {
     if (!listo) return;

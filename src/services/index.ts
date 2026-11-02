@@ -6,7 +6,7 @@ export {
 } from './auth';
 export { listarCategoriasAveria } from './categorias';
 export { listarConsejos, listarPromociones } from './contenido';
-export { listarMecanicos, listarMecanicosDestacados, obtenerMecanico } from './mecanicos';
+export { listarMecanicos, listarMecanicosDestacados, obtenerMecanico, tieneUbicacion } from './mecanicos';
 export {
   COMISION_PLATAFORMA,
   detalleEstadoPago,

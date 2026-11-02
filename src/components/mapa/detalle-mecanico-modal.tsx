@@ -39,10 +39,13 @@ export function DetalleMecanicoModal({ mecanico, onCerrar }: DetalleMecanicoModa
       visible={Boolean(mecanico)}
       transparent
       animationType="slide"
+      // En Android el velo también cubre la barra de estado.
+      statusBarTranslucent
       onRequestClose={onCerrar}
     >
       <TouchableWithoutFeedback onPress={onCerrar}>
-        <View className="flex-1 justify-end bg-black/60">
+        {/* Velo suave: oscurece sin tapar el mapa de fondo */}
+        <View className="flex-1 justify-end bg-black/35">
           <TouchableWithoutFeedback>
             <View className="rounded-t-3xl border-t border-borde bg-superficie px-5 pb-8 pt-4 shadow-2xl">
               {/* Barra superior de arrastre */}
