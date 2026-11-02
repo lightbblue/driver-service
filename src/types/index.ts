@@ -20,14 +20,16 @@ export type EstadoServicio =
   | 'llegue'
   | 'trabajando'
   | 'finalizado'
+  | 'no_resuelta'
   | 'cancelada';
 
-/** Estadísticas del perfil. Derivadas: en E2 salen de una vista agregada. */
+/** Estadísticas del perfil del mecánico: las calcula `estadisticas_mecanico_actual()`. */
 export interface EstadisticasPerfil {
-  solicitudes: number;
+  /** Servicios que terminaron finalizados. */
   resueltas: number;
+  /** Promedio de estrellas (1 a 5), o null si nadie lo calificó todavía. */
   calificacion: number | null;
-  miembro_desde: number;
+  cantidad_calificaciones: number;
 }
 
 /** Tabla `perfiles`. */
@@ -41,12 +43,27 @@ export interface Perfil {
   localidad: string | null;
   provincia: string | null;
   creado_en: string;
-  estadisticas: EstadisticasPerfil;
+  /** Año de alta de la cuenta. */
+  miembro_desde: number;
+  /** Solo para mecánicos: el cliente no ve estadísticas. */
+  estadisticas: EstadisticasPerfil | null;
 }
 
-/** Tabla `mecanicos` + `mecanico_especialidades`. */
+/**
+ * Prestador que se muestra en el mapa, la lista y el inicio: un taller (tabla `talleres`)
+ * o un mecánico que trabaja en ruta, sin taller (tabla `mecanicos`).
+ */
 export interface Mecanico {
+  /** Id del taller o del mecánico, según `tipo`. */
   id: string;
+  tipo: 'taller' | 'mecanico';
+  /** Tiene al menos un mecánico con cuenta: se le puede pedir asistencia por la app. */
+  adherido: boolean;
+  /** Solo talleres: cuántos mecánicos con cuenta tiene. */
+  cantidad_mecanicos: number;
+  /** Solo talleres: promedio de estrellas de sus mecánicos (aparte de las reseñas del taller). */
+  calificacion_mecanicos: number | null;
+  calificaciones_mecanicos: number;
   perfil_id: string;
   nombre_taller: string;
   descripcion: string | null;
@@ -106,11 +123,81 @@ export interface HitoServicio {
 
 export type ActorCancelacion = 'cliente' | 'mecanico';
 
-/** Taller asignado (tabla `mecanicos`). */
+/** Mecánico que aceptó la solicitud (tabla `mecanicos`) y su taller, si tiene. */
 export interface MecanicoAsignado {
   id: string;
   nombre: string;
   telefono: string | null;
+  taller: string | null;
+}
+
+/** Cliente que pidió la solicitud, como lo ve el mecánico. El teléfono llega solo si ya la aceptó. */
+export interface ClienteSolicitud {
+  nombre: string;
+  avatar_url: string | null;
+  telefono: string | null;
+}
+
+/** Tabla `notificaciones`: aviso de la campana (RF-NOTIF-001). */
+export interface Notificacion {
+  id: string;
+  titulo: string;
+  cuerpo: string | null;
+  /** Solicitud a la que lleva el aviso al tocarlo. */
+  solicitud_id: string | null;
+  /** `taller`: pedidos para sumarse y sus respuestas; lleva a Mi taller. */
+  tipo: 'solicitud' | 'taller';
+  leida: boolean;
+  creado_en: string;
+}
+
+/** El taller del mecánico autenticado y su lugar en él. */
+export interface MiTaller {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  telefono: string | null;
+  direccion: string;
+  localidad: string | null;
+  latitud: number;
+  longitud: number;
+  especialidades: string[];
+  imagen_url: string | null;
+  /** Dueño: lo edita y administra miembros. Pendiente: pidió sumarse y espera respuesta. */
+  rol: 'dueno' | 'miembro' | 'pendiente';
+}
+
+/** Mecánico del taller (o que pidió sumarse), como lo ve Mi taller. */
+export interface MiembroTaller {
+  mecanico_id: string;
+  nombre: string;
+  avatar_url: string | null;
+  telefono: string | null;
+  estado: 'dueno' | 'miembro' | 'pendiente';
+}
+
+/** Tabla `fotos_taller`: galería del taller. */
+export interface FotoTaller {
+  id: string;
+  url: string;
+}
+
+/** Tabla `resenas_taller`, con el nombre y la foto de quien la escribió. */
+export interface ResenaTaller {
+  id: string;
+  nombre: string;
+  avatar_url: string | null;
+  puntaje: number;
+  comentario: string | null;
+  creado_en: string;
+  es_mia: boolean;
+}
+
+/** Taller que se puede elegir al registrarse como mecánico. */
+export interface TallerOpcion {
+  id: string;
+  nombre: string;
+  direccion: string;
 }
 
 /** Cómo paga el cliente: elegido al pedir. Mercado Pago es simulado en esta entrega. */
@@ -136,6 +223,13 @@ export interface PagoServicio {
   actualizado_en: string;
 }
 
+/** Tabla `calificaciones`: de 1 a 5 estrellas, solo el cliente y solo un servicio finalizado (RN-011). */
+export interface CalificacionServicio {
+  puntaje: number;
+  comentario: string | null;
+  creado_en: string;
+}
+
 /** Tabla `solicitudes` con su categoría, su mecánico y su historial. */
 export interface Servicio {
   id: string;
@@ -154,6 +248,14 @@ export interface Servicio {
   motivo_cancelacion: string | null;
   /** Derivado del actor del hito de cancelación. */
   cancelado_por: ActorCancelacion | null;
+  /** Por qué el mecánico no pudo resolverlo (estado `no_resuelta`). */
+  motivo_no_resuelta: string | null;
+  /** Estrellas que dio el cliente a un servicio finalizado, si ya lo calificó. */
+  calificacion: CalificacionServicio | null;
+  /** Solo en las vistas del mecánico: quién la pidió. */
+  cliente: ClienteSolicitud | null;
+  /** A quién se la pidió el cliente desde el mapa. Null: la puede tomar cualquier mecánico (SOS). */
+  destino: { tipo: 'taller' | 'mecanico'; id: string; nombre: string } | null;
   /** Tarifa fijada al pedir: el cliente la conoce antes de confirmar. */
   monto_final: number | null;
   medio_pago: MedioPago;

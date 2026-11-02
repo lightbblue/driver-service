@@ -2,6 +2,8 @@ import { lanzar } from '@/lib/errores';
 import { supabase } from '@/lib/supabase';
 import type {
   ActorCancelacion,
+  CalificacionServicio,
+  ClienteSolicitud,
   EstadoPago,
   EstadoServicio,
   HitoServicio,
@@ -57,10 +59,13 @@ export function estadoPago(servicio: Pick<Servicio, 'pago'>): EstadoPago {
 
 const COLUMNAS = `
   id, codigo, usuario_id, mecanico_id, categoria_id, descripcion,
-  direccion, latitud, longitud, estado, eta_minutos, motivo_cancelacion,
+  direccion, latitud, longitud, estado, eta_minutos, motivo_cancelacion, motivo_no_resuelta,
   monto_final, medio_pago, creado_en, actualizado_en,
   categoria:categorias_averia ( nombre, icono ),
-  mecanico:mecanicos ( id, nombre, telefono ),
+  calificacion:calificaciones ( puntaje, comentario, creado_en ),
+  mecanico:mecanicos!solicitudes_mecanico_id_fkey ( id, nombre, telefono, taller:talleres!mecanicos_taller_id_fkey ( nombre ) ),
+  taller_solicitado:talleres!solicitudes_taller_solicitado_id_fkey ( id, nombre ),
+  mecanico_solicitado:mecanicos!solicitudes_mecanico_solicitado_id_fkey ( id, nombre ),
   pago:pagos ( id, monto, comision, neto_mecanico, medio, estado, actualizado_en ),
   historial:historial_solicitudes ( id, estado_anterior, estado, usuario_id, nota, creado_en )
 `;
@@ -90,6 +95,14 @@ function aPago(fila: FilaPago | FilaPago[] | null): PagoServicio | null {
   };
 }
 
+type FilaCalificacion = { puntaje: number; comentario: string | null; creado_en: string };
+
+/** `calificaciones.solicitud_id` también es único: misma salvedad que el pago. */
+function aCalificacion(fila: FilaCalificacion | FilaCalificacion[] | null): CalificacionServicio | null {
+  const calificacion = Array.isArray(fila) ? fila[0] : fila;
+  return calificacion ? { ...calificacion, puntaje: Number(calificacion.puntaje) } : null;
+}
+
 type FilaSolicitud = {
   id: string;
   codigo: string;
@@ -103,13 +116,22 @@ type FilaSolicitud = {
   estado: EstadoServicio;
   eta_minutos: number | null;
   motivo_cancelacion: string | null;
+  motivo_no_resuelta: string | null;
   monto_final: number | string | null;
   medio_pago: MedioPago;
   creado_en: string;
   actualizado_en: string;
   categoria: { nombre: string; icono: string | null } | null;
-  mecanico: { id: string; nombre: string; telefono: string | null } | null;
+  mecanico: {
+    id: string;
+    nombre: string;
+    telefono: string | null;
+    taller: { nombre: string } | null;
+  } | null;
+  taller_solicitado: { id: string; nombre: string } | null;
+  mecanico_solicitado: { id: string; nombre: string } | null;
   pago: FilaPago | FilaPago[] | null;
+  calificacion: FilaCalificacion | FilaCalificacion[] | null;
   historial:
     | {
         id: string;
@@ -147,7 +169,20 @@ function aServicio(fila: FilaSolicitud): Servicio {
     codigo: fila.codigo,
     cliente_id: fila.usuario_id,
     mecanico_id: fila.mecanico_id,
-    mecanico: fila.mecanico,
+    mecanico: fila.mecanico
+      ? {
+          id: fila.mecanico.id,
+          nombre: fila.mecanico.nombre,
+          telefono: fila.mecanico.telefono,
+          taller: fila.mecanico.taller?.nombre ?? null,
+        }
+      : null,
+    cliente: null,
+    destino: fila.taller_solicitado
+      ? { tipo: 'taller', ...fila.taller_solicitado }
+      : fila.mecanico_solicitado
+        ? { tipo: 'mecanico', ...fila.mecanico_solicitado }
+        : null,
     categoria_id: fila.categoria_id,
     categoria_nombre: fila.categoria?.nombre ?? 'Asistencia mecánica',
     categoria_icono: fila.categoria?.icono ?? null,
@@ -161,6 +196,8 @@ function aServicio(fila: FilaSolicitud): Servicio {
     eta_minutos: fila.eta_minutos,
     motivo_cancelacion: fila.motivo_cancelacion,
     cancelado_por: canceladoPor,
+    motivo_no_resuelta: fila.motivo_no_resuelta,
+    calificacion: aCalificacion(fila.calificacion),
     monto_final: fila.monto_final == null ? null : Number(fila.monto_final),
     medio_pago: fila.medio_pago,
     pago: aPago(fila.pago),
@@ -205,10 +242,48 @@ export async function listarSolicitudesMecanico(
   if (asignadas.error) lanzar(asignadas.error, 'No se pudieron cargar tus servicios');
   if (disponibles.error) lanzar(disponibles.error, 'No se pudieron cargar las solicitudes disponibles');
 
+  const propias = (asignadas.data as unknown as FilaSolicitud[]).map(aServicio);
+  const pendientes = (disponibles.data as unknown as FilaSolicitud[]).map(aServicio);
+
+  // Quién pidió cada una (el mecánico no puede leer perfiles ajenos directamente).
+  const clientes = await obtenerClientes([...propias, ...pendientes].map((s) => s.id));
+  const conCliente = (s: Servicio): Servicio => ({ ...s, cliente: clientes.get(s.id) ?? null });
+
+  // Las que el cliente le pidió a su taller (o a él) van primero; después, por antigüedad.
+  // La base solo le muestra las dirigidas a él, así que no hace falta filtrar acá.
+  const dirigidas = pendientes.filter((s) => s.destino);
+  const generales = pendientes.filter((s) => !s.destino);
+
   return {
-    asignadas: (asignadas.data as unknown as FilaSolicitud[]).map(aServicio),
-    disponibles: (disponibles.data as unknown as FilaSolicitud[]).map(aServicio),
+    asignadas: propias.map(conCliente),
+    disponibles: [...dirigidas, ...generales].map(conCliente),
   };
+}
+
+type FilaCliente = { solicitud_id: string; nombre: string; avatar_url: string | null; telefono: string | null };
+
+/**
+ * Cliente de cada solicitud, para el mecánico que la atiende o la puede tomar.
+ * Si falla, las solicitudes se muestran igual sin esos datos.
+ */
+async function obtenerClientes(ids: string[]): Promise<Map<string, ClienteSolicitud>> {
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase.rpc('clientes_de_solicitudes', { p_solicitudes: ids });
+  if (error) {
+    console.warn('[SOLICITUDES] No se pudieron cargar los clientes:', error.message);
+    return new Map();
+  }
+  return new Map(
+    ((data ?? []) as FilaCliente[]).map((f) => [
+      f.solicitud_id,
+      { nombre: f.nombre, avatar_url: f.avatar_url, telefono: f.telefono },
+    ]),
+  );
+}
+
+/** Cliente de una solicitud, para el seguimiento del mecánico. */
+export async function obtenerClienteSolicitud(id: string): Promise<ClienteSolicitud | null> {
+  return (await obtenerClientes([id])).get(id) ?? null;
 }
 
 export async function obtenerSolicitud(id: string): Promise<Servicio | null> {
@@ -249,6 +324,8 @@ export async function crearSolicitud(datos: {
   descripcion: string;
   ubicacion: UbicacionServicio;
   medioPago: MedioPago;
+  /** Pedida desde el modal de un taller o de un mecánico en ruta: solo ellos la ven. */
+  destino?: { tipo: 'taller' | 'mecanico'; id: string } | null;
 }): Promise<{ id: string; codigo: string }> {
   const usuarioId = await obtenerUsuarioId();
 
@@ -263,6 +340,8 @@ export async function crearSolicitud(datos: {
       latitud: datos.ubicacion.latitud,
       longitud: datos.ubicacion.longitud,
       medio_pago: datos.medioPago,
+      taller_solicitado_id: datos.destino?.tipo === 'taller' ? datos.destino.id : null,
+      mecanico_solicitado_id: datos.destino?.tipo === 'mecanico' ? datos.destino.id : null,
     })
     .select('id, codigo')
     .single();
@@ -297,6 +376,25 @@ export async function cancelarSolicitud(id: string, motivo: string): Promise<voi
 }
 
 /**
+ * El mecánico asignado cierra el trabajo sin poder resolverlo. El motivo es
+ * obligatorio y la base devuelve el cobro como en una cancelación.
+ */
+export async function marcarNoResuelta(id: string, motivo: string): Promise<void> {
+  return cambiarEstadoSolicitud(id, 'no_resuelta', { observacion: motivo });
+}
+
+/** El cliente califica de 1 a 5 estrellas un servicio finalizado (RF-RATING-001, RN-011). */
+export async function calificarServicio(id: string, puntaje: number, comentario?: string): Promise<void> {
+  const { error } = await supabase.rpc('calificar_servicio', {
+    p_solicitud_id: id,
+    p_puntaje: puntaje,
+    p_comentario: comentario?.trim() || null,
+  });
+
+  if (error) lanzar(error, 'No se pudo guardar la calificación');
+}
+
+/**
  * Avisa cada vez que cambia una solicitud visible para el usuario (o una en
  * particular si se pasa `id`). Devuelve la función para desuscribirse.
  */
@@ -322,6 +420,16 @@ export function suscribirseASolicitudes(alCambiar: () => void, id?: string): () 
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'pagos', ...(id ? { filter: `solicitud_id=eq.${id}` } : {}) },
+      alCambiar,
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'calificaciones',
+        ...(id ? { filter: `solicitud_id=eq.${id}` } : {}),
+      },
       alCambiar,
     )
     .subscribe();

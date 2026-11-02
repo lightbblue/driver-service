@@ -8,6 +8,7 @@ import {
   compartirUbicacionMecanico,
   distanciaEntre,
   obtenerRuta,
+  obtenerPosicionAproximada,
   obtenerUbicacionMecanico,
   suscribirseAUbicacionMecanico,
   type Posicion,
@@ -30,10 +31,22 @@ function textoLlegada(ruta: Ruta): string {
   return `Llega en ~${minutos} min · ${km} km`;
 }
 
+/** Para el mecánico que todavía no aceptó: cuánto le llevaría llegar. */
+function textoDistancia(ruta: Ruta): string {
+  const minutos = Math.max(1, Math.round(ruta.duracionSegundos / 60));
+  const km = (ruta.distanciaMetros / 1000).toFixed(1).replace('.', ',');
+  return `Estás a ~${minutos} min · ${km} km`;
+}
+
 type MapaServicioProps = {
   servicio: Servicio;
   /** El mecánico asignado comparte su ubicación desde este mapa. */
   esAsignado: boolean;
+  /**
+   * Un mecánico mira una solicitud que puede aceptar: ve su posición, la del cliente
+   * y el recorrido, para decidir si la toma.
+   */
+  antesDeAceptar?: boolean;
 };
 
 /**
@@ -41,11 +54,24 @@ type MapaServicioProps = {
  * - Todos ven dónde está el cliente; el mecánico, incluso antes de aceptar.
  * - Con el servicio en curso, el cliente ve al mecánico moverse en vivo.
  */
-export function MapaServicio({ servicio, esAsignado }: MapaServicioProps) {
+export function MapaServicio({ servicio, esAsignado, antesDeAceptar = false }: MapaServicioProps) {
   const [posicionGuardada, setPosicionMecanico] = useState<Posicion | null>(null);
   const [errorCompartir, setErrorUbicacion] = useState<string | null>(null);
+  const [miPosicion, setMiPosicion] = useState<Posicion | null>(null);
 
   const enCurso = !!servicio.mecanico_id && EN_CURSO.includes(servicio.estado);
+
+  // Antes de aceptar: la posición actual del mecánico que está mirando la solicitud.
+  useEffect(() => {
+    if (!antesDeAceptar) return;
+    let activo = true;
+    obtenerPosicionAproximada().then((posicion) => {
+      if (activo && posicion) setMiPosicion(posicion);
+    });
+    return () => {
+      activo = false;
+    };
+  }, [antesDeAceptar]);
 
   // Posición del mecánico: la última guardada y los cambios en vivo.
   useEffect(() => {
@@ -85,7 +111,7 @@ export function MapaServicio({ servicio, esAsignado }: MapaServicioProps) {
   }, [servicio.id, esAsignado, enCurso]);
 
   // Fuera del servicio en curso no se muestra la posición del mecánico ni el error de compartirla.
-  const posicionMecanico = enCurso ? posicionGuardada : null;
+  const posicionMecanico = enCurso ? posicionGuardada : antesDeAceptar ? miPosicion : null;
   const errorUbicacion = esAsignado && enCurso ? errorCompartir : null;
 
   const { latitud, longitud } = servicio.ubicacion;
@@ -97,7 +123,7 @@ export function MapaServicio({ servicio, esAsignado }: MapaServicioProps) {
     return lista;
   }, [cliente, posicionMecanico]);
 
-  const viajando = !!posicionMecanico && VIAJANDO.includes(servicio.estado);
+  const viajando = !!posicionMecanico && (VIAJANDO.includes(servicio.estado) || antesDeAceptar);
 
   // Recorrido por las calles del mecánico al cliente (RF-GPS-002). Se pide de nuevo solo si el
   // mecánico se movió bastante, para no consultar el servicio de rutas cada 5 segundos.
@@ -130,6 +156,12 @@ export function MapaServicio({ servicio, esAsignado }: MapaServicioProps) {
 
   const aviso = errorUbicacion
     ? errorUbicacion
+    : antesDeAceptar
+      ? ruta
+        ? textoDistancia(ruta)
+        : miPosicion
+          ? 'Calculando el recorrido…'
+          : 'Buscando tu ubicación…'
     : enCurso && !posicionMecanico
       ? esAsignado
         ? 'Buscando tu ubicación…'
@@ -149,8 +181,12 @@ export function MapaServicio({ servicio, esAsignado }: MapaServicioProps) {
         altura={230}
       />
       <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-3">
-        <Text className="text-mini text-texto-tenue">🏍️ Cliente</Text>
-        {servicio.mecanico_id ? <Text className="text-mini text-texto-tenue">🛠️ Mecánico</Text> : null}
+        <Text className="text-mini text-texto-tenue">⚠️ Cliente</Text>
+        {servicio.mecanico_id ? (
+          <Text className="text-mini text-texto-tenue">🔧 Mecánico</Text>
+        ) : antesDeAceptar && miPosicion ? (
+          <Text className="text-mini text-texto-tenue">🔧 Vos</Text>
+        ) : null}
         {aviso ? (
           <Text className={errorUbicacion ? 'text-mini text-peligro' : 'text-mini text-texto-tenue'}>{aviso}</Text>
         ) : null}

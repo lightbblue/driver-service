@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 
+import { Avatar } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { formatearFechaHora, formatearMoneda } from '@/lib/formato';
 import { iconoDeCategoria } from '@/lib/iconos';
+import { COLORES } from '@/lib/tema';
 import { ETIQUETA_ESTADO_PAGO } from '@/services';
 import type { Servicio } from '@/types';
 
@@ -30,6 +32,31 @@ export function TarjetaSolicitud({ servicio, onPress }: { servicio: Servicio; on
         </View>
         <Ionicons name="chevron-forward" size={18} color="#6B7280" />
       </View>
+
+      {/* En la bandeja del mecánico: quién la pidió */}
+      {servicio.cliente ? (
+        <View testID={`cliente-${servicio.id}`} className="flex-row items-center gap-2">
+          <Avatar uri={servicio.cliente.avatar_url} tamanio={24} />
+          <Text className="flex-1 text-chico font-semibold text-texto" numberOfLines={1}>
+            {servicio.cliente.nombre}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Pedida a un taller o a un mecánico en particular (el mecánico la ve primero en su bandeja) */}
+      {servicio.destino ? (
+        <View testID={`destino-${servicio.id}`} className="flex-row items-center gap-1.5 self-start rounded-full bg-acento/15 px-2.5 py-1">
+          <Ionicons
+            name={servicio.destino.tipo === 'taller' ? 'storefront' : 'person'}
+            size={12}
+            color={COLORES.acento}
+          />
+          <Text className="text-mini font-bold text-acento">
+            {servicio.estado === 'pendiente' ? 'Pedida a ' : ''}
+            {servicio.destino.nombre}
+          </Text>
+        </View>
+      ) : null}
 
       <View className="flex-row items-center gap-1.5">
         <Ionicons name="location-outline" size={14} color="#9CA3AF" />

@@ -13,11 +13,23 @@ import {
   View,
 } from 'react-native';
 
+import { CalificarServicio } from '@/components/seguimiento/calificar-servicio';
 import { DistintivoEstado } from '@/components/seguimiento/distintivo-estado';
 import { LineaTiempo } from '@/components/seguimiento/linea-tiempo';
 import { MapaServicio } from '@/components/seguimiento/mapa-servicio';
 import { ResumenPago } from '@/components/seguimiento/resumen-pago';
-import { Boton, CampoTexto, Cargando, Chip, EstadoError, ListaVacia, Pantalla, Tarjeta } from '@/components/ui';
+import {
+  Avatar,
+  Boton,
+  Calificacion,
+  CampoTexto,
+  Cargando,
+  Chip,
+  EstadoError,
+  ListaVacia,
+  Pantalla,
+  Tarjeta,
+} from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
 import { formatearMoneda } from '@/lib/formato';
 import { COLORES } from '@/lib/tema';
@@ -25,15 +37,18 @@ import {
   cambiarEstadoSolicitud,
   cancelarSolicitud,
   esCancelable,
+  marcarNoResuelta,
   netoMecanico,
   NOMBRE_MEDIO,
   obtenerMecanicoIdActual,
+  obtenerClienteSolicitud,
+  obtenerFichaMecanico,
   obtenerSolicitud,
   obtenerUsuarioId,
   siguienteEstadoMecanico,
   suscribirseASolicitudes,
 } from '@/services';
-import type { EstadoServicio, Servicio } from '@/types';
+import type { ClienteSolicitud, EstadoServicio, Servicio } from '@/types';
 
 /**
  * Texto del botón con el que el mecánico registra cada etapa. La base agrupa pasos:
@@ -61,9 +76,24 @@ const MOTIVOS_MECANICO = [
   'No tengo los repuestos',
 ];
 
+const MOTIVOS_NO_RESUELTA = [
+  'Requiere grúa o taller',
+  'Faltan repuestos',
+  'La falla es más grave',
+  'Necesita herramientas especiales',
+];
+
 const MINUTOS_ETA = [10, 20, 30, 45];
 
-type Detalle = { servicio: Servicio | null; usuarioId: string; mecanicoId: string | null };
+type Detalle = {
+  servicio: Servicio | null;
+  usuarioId: string;
+  mecanicoId: string | null;
+  /** Foto y estrellas del mecánico asignado: el cliente decide con eso si sigue con él. */
+  puntajeMecanico: { promedio: number | null; cantidad: number; fotoUrl: string | null } | null;
+  /** Para el mecánico: quién pidió la solicitud. */
+  cliente: ClienteSolicitud | null;
+};
 
 async function cargarDetalle(id: string): Promise<Detalle> {
   const [servicio, usuarioId, mecanicoId] = await Promise.all([
@@ -71,7 +101,14 @@ async function cargarDetalle(id: string): Promise<Detalle> {
     obtenerUsuarioId(),
     obtenerMecanicoIdActual(),
   ]);
-  return { servicio, usuarioId, mecanicoId };
+  // Solo el cliente necesita las estrellas del mecánico que lo atiende.
+  const esCliente = servicio?.cliente_id === usuarioId;
+  const [puntajeMecanico, cliente] = await Promise.all([
+    esCliente && servicio?.mecanico_id ? obtenerFichaMecanico(servicio.mecanico_id) : null,
+    // Y el mecánico, los datos de quien la pidió.
+    !esCliente && servicio && mecanicoId ? obtenerClienteSolicitud(servicio.id) : null,
+  ]);
+  return { servicio, usuarioId, mecanicoId, puntajeMecanico, cliente };
 }
 
 /** Seguimiento de una solicitud: estado en vivo, historial y acciones (REQ-05). */
@@ -89,6 +126,8 @@ export default function SeguimientoScreen() {
   const [eta, setEta] = useState<number | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [motivo, setMotivo] = useState('');
+  const [sinResolver, setSinResolver] = useState(false);
+  const [motivoSinResolver, setMotivoSinResolver] = useState('');
   const [enviando, setEnviando] = useState(false);
 
   const servicio = detalle.datos?.servicio ?? null;
@@ -158,6 +197,21 @@ export default function SeguimientoScreen() {
     );
   };
 
+  const confirmarNoResuelta = () => {
+    if (!servicio) return;
+    if (!motivoSinResolver.trim()) {
+      Alert.alert('Falta el motivo', 'Indicá por qué no se pudo resolver el problema.');
+      return;
+    }
+    void ejecutar(
+      () => marcarNoResuelta(servicio.id, motivoSinResolver),
+      () => {
+        setSinResolver(false);
+        setMotivoSinResolver('');
+      },
+    );
+  };
+
   return (
     <Pantalla bordes={['top', 'bottom']}>
       <KeyboardAvoidingView
@@ -218,15 +272,35 @@ export default function SeguimientoScreen() {
                 </Text>
               ) : null}
 
-              {servicio.mecanico ? (
-                <View className="flex-row items-center gap-3 rounded-campo bg-superficie-alta p-3">
-                  <Ionicons name="construct-outline" size={20} color="#FFC107" />
+              {/* El mecánico que lo atiende: solo lo ve el cliente */}
+              {servicio.mecanico && esCliente ? (
+                <View testID="tarjeta-mecanico-asignado" className="flex-row items-center gap-3 rounded-campo bg-superficie-alta p-3">
+                  <View className="rounded-full border-2 border-acento p-0.5">
+                    <Avatar uri={detalle.datos?.puntajeMecanico?.fotoUrl} tamanio={48} />
+                  </View>
                   <View className="flex-1">
+                    <Text className="text-mini text-texto-tenue">Tu mecánico</Text>
                     <Text className="text-sm font-bold text-texto">
-                      {servicio.mecanico.nombre ?? 'Mecánico asignado'}
+                      {servicio.mecanico.nombre || 'Mecánico asignado'}
                     </Text>
+                    {servicio.mecanico.taller ? (
+                      <View className="flex-row items-center gap-1">
+                        <Ionicons name="storefront-outline" size={12} color={COLORES.textoTenue} />
+                        <Text className="text-mini text-texto-tenue">{servicio.mecanico.taller}</Text>
+                      </View>
+                    ) : (
+                      <Text className="text-mini text-texto-tenue">Asistencia en ruta</Text>
+                    )}
                     {servicio.mecanico.telefono ? (
                       <Text className="text-mini text-texto-tenue">{servicio.mecanico.telefono}</Text>
+                    ) : null}
+                    {detalle.datos?.puntajeMecanico ? (
+                      <View testID="calificacion-mecanico" className="pt-0.5">
+                        <Calificacion
+                          puntaje={detalle.datos.puntajeMecanico.promedio}
+                          resenias={detalle.datos.puntajeMecanico.cantidad}
+                        />
+                      </View>
                     ) : null}
                   </View>
                   {servicio.mecanico.telefono && esCliente ? (
@@ -240,10 +314,53 @@ export default function SeguimientoScreen() {
                     </Pressable>
                   ) : null}
                 </View>
-              ) : servicio.estado === 'pendiente' ? (
-                <Text className="text-chico text-texto-tenue">
-                  Estamos esperando que un mecánico acepte tu solicitud.
+              ) : servicio.estado === 'pendiente' && esCliente ? (
+                <Text testID="texto-esperando" className="text-chico text-texto-tenue">
+                  {servicio.destino?.tipo === 'taller'
+                    ? `Esperando que un mecánico de ${servicio.destino.nombre} acepte tu solicitud. Si no responden, podés cancelarla y usar el SOS.`
+                    : servicio.destino
+                      ? `Esperando que ${servicio.destino.nombre} acepte tu solicitud. Si no responde, podés cancelarla y usar el SOS.`
+                      : 'Estamos esperando que un mecánico acepte tu solicitud.'}
                 </Text>
+              ) : null}
+
+              {/* El cliente que la pidió: solo lo ve el mecánico */}
+              {!esCliente && detalle.datos?.cliente ? (
+                <View testID="tarjeta-cliente" className="flex-row items-center gap-3 rounded-campo bg-superficie-alta p-3">
+                  <View className="rounded-full border-2 border-acento p-0.5">
+                    <Avatar uri={detalle.datos.cliente.avatar_url} tamanio={48} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-mini text-texto-tenue">Cliente</Text>
+                    <Text className="text-sm font-bold text-texto">{detalle.datos.cliente.nombre}</Text>
+                    {detalle.datos.cliente.telefono ? (
+                      <Text className="text-mini text-texto-tenue">{detalle.datos.cliente.telefono}</Text>
+                    ) : null}
+                  </View>
+                  {detalle.datos.cliente.telefono ? (
+                    <Pressable
+                      testID="btn-llamar-cliente"
+                      accessibilityRole="button"
+                      accessibilityLabel="Llamar al cliente"
+                      hitSlop={8}
+                      onPress={() => Linking.openURL(`tel:${detalle.datos?.cliente?.telefono}`)}
+                      className="h-9 w-9 items-center justify-center rounded-full bg-acento active:bg-acento-oscuro">
+                      <Ionicons name="call" size={17} color={COLORES.textoInverso} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {/* El mecánico ve si se la pidieron a su taller (o a él) */}
+              {servicio.destino && !esCliente && servicio.estado === 'pendiente' ? (
+                <View testID="aviso-dirigida" className="flex-row items-center gap-2 rounded-campo bg-acento/10 p-3">
+                  <Ionicons name="star" size={16} color={COLORES.acento} />
+                  <Text className="flex-1 text-chico text-texto">
+                    {servicio.destino.tipo === 'taller'
+                      ? `El cliente se la pidió a tu taller, ${servicio.destino.nombre}.`
+                      : 'El cliente te la pidió a vos.'}
+                  </Text>
+                </View>
               ) : null}
 
               <View className="flex-row items-center gap-1.5">
@@ -257,8 +374,10 @@ export default function SeguimientoScreen() {
             </Tarjeta>
 
             {/* Mapa integrado: ubicación del cliente y, en curso, el mecánico en vivo (RF-GPS-001..005) */}
-            {servicio.estado !== 'cancelada' && servicio.estado !== 'finalizado' ? (
-              <MapaServicio servicio={servicio} esAsignado={esAsignado} />
+            {servicio.estado !== 'cancelada' &&
+            servicio.estado !== 'finalizado' &&
+            servicio.estado !== 'no_resuelta' ? (
+              <MapaServicio servicio={servicio} esAsignado={esAsignado} antesDeAceptar={puedeAceptar} />
             ) : null}
 
             {/* Precio y cobro (RF-QUOTE-002, RF-PAY-003): lo ven el cliente y el mecánico asignado */}
@@ -275,6 +394,20 @@ export default function SeguimientoScreen() {
                   {servicio.motivo_cancelacion ?? 'Sin motivo indicado'}
                 </Text>
               </Tarjeta>
+            ) : null}
+
+            {servicio.estado === 'no_resuelta' ? (
+              <Tarjeta testID="tarjeta-no-resuelta" className="gap-1 border-peligro/40 p-4">
+                <Text className="text-sm font-bold text-peligro">El mecánico no pudo resolver el problema</Text>
+                <Text className="text-chico text-texto">
+                  {servicio.motivo_no_resuelta ?? 'Sin motivo indicado'}
+                </Text>
+              </Tarjeta>
+            ) : null}
+
+            {/* Calificación (RF-RATING-001): solo un servicio resuelto */}
+            {servicio.estado === 'finalizado' && servicio.mecanico_id && (esCliente || esAsignado) ? (
+              <CalificarServicio servicio={servicio} esCliente={esCliente} onCalificado={recargar} />
             ) : null}
 
             {/* Acciones del mecánico */}
@@ -330,9 +463,66 @@ export default function SeguimientoScreen() {
                   titulo={ACCION_MECANICO[proximo] ?? 'Continuar'}
                   iconoDerecha="arrow-forward"
                   cargando={enviando}
-                  deshabilitado={enviando}
+                  deshabilitado={enviando || sinResolver}
                   onPress={avanzarEstado}
                 />
+
+                {/* Trabajando: se puede cerrar sin resolver; el cobro se devuelve */}
+                {proximo === 'finalizado' && !sinResolver ? (
+                  <Boton
+                    testID="btn-no-resuelta"
+                    titulo="No se pudo resolver"
+                    variante="secundario"
+                    icono="alert-circle-outline"
+                    deshabilitado={enviando}
+                    onPress={() => setSinResolver(true)}
+                  />
+                ) : null}
+              </Tarjeta>
+            ) : null}
+
+            {proximo === 'finalizado' && sinResolver ? (
+              <Tarjeta testID="panel-no-resuelta" className="gap-3 border-peligro/40 p-4">
+                <View className="gap-0.5">
+                  <Text className="text-sm font-bold text-texto">¿Por qué no se pudo resolver?</Text>
+                  <Text className="text-mini text-texto-tenue">
+                    Se le devuelve el pago al cliente y el servicio no cuenta como resuelto.
+                  </Text>
+                </View>
+                <View className="flex-row flex-wrap gap-2">
+                  {MOTIVOS_NO_RESUELTA.map((m) => (
+                    <Chip
+                      key={m}
+                      texto={m}
+                      activo={motivoSinResolver === m}
+                      onPress={() => setMotivoSinResolver(m)}
+                    />
+                  ))}
+                </View>
+                <CampoTexto
+                  testID="campo-motivo-no-resuelta"
+                  placeholder="Motivo (obligatorio)"
+                  value={motivoSinResolver}
+                  onChangeText={setMotivoSinResolver}
+                  maxLength={200}
+                />
+                <View className="flex-row gap-3">
+                  <Boton
+                    titulo="Volver"
+                    variante="secundario"
+                    className="flex-1"
+                    onPress={() => setSinResolver(false)}
+                  />
+                  <Boton
+                    testID="btn-confirmar-no-resuelta"
+                    titulo="Confirmar"
+                    variante="peligro"
+                    className="flex-1"
+                    cargando={enviando}
+                    deshabilitado={enviando}
+                    onPress={confirmarNoResuelta}
+                  />
+                </View>
               </Tarjeta>
             ) : null}
 

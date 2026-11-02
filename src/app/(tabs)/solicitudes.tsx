@@ -14,6 +14,7 @@ import {
 } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
 import {
+  esEstadoActivo,
   listarSolicitudes,
   listarSolicitudesMecanico,
   obtenerMecanicoIdActual,
@@ -21,22 +22,39 @@ import {
 } from '@/services';
 import type { Servicio } from '@/types';
 
-type Bandeja = 'asignadas' | 'disponibles';
+type Bandeja = 'disponibles' | 'historial';
 
 const BANDEJAS: OpcionConmutador<Bandeja>[] = [
-  { valor: 'asignadas', etiqueta: 'Mis servicios', icono: 'construct-outline' },
   { valor: 'disponibles', etiqueta: 'Disponibles', icono: 'notifications-outline' },
+  { valor: 'historial', etiqueta: 'Historial', icono: 'time-outline' },
 ];
 
-type Listado = { esMecanico: boolean; asignadas: Servicio[]; disponibles: Servicio[] };
+type Listado = {
+  esMecanico: boolean;
+  /** Mecánico: los que está atendiendo ahora (van arriba de Disponibles). Cliente: todas sus solicitudes. */
+  enCurso: Servicio[];
+  disponibles: Servicio[];
+  /** Mecánico: los que ya terminaron (finalizados, no resueltos o cancelados). */
+  historial: Servicio[];
+};
 
-/** El cliente ve sus solicitudes; el mecánico, sus servicios y los que esperan mecánico. */
+/** El cliente ve sus solicitudes; el mecánico, lo que puede tomar, lo que atiende y su historial. */
 async function cargarListado(): Promise<Listado> {
   const mecanicoId = await obtenerMecanicoIdActual();
   if (mecanicoId) {
-    return { esMecanico: true, ...(await listarSolicitudesMecanico(mecanicoId)) };
+    const { asignadas, disponibles } = await listarSolicitudesMecanico(mecanicoId);
+    return {
+      esMecanico: true,
+      enCurso: asignadas.filter((s) => esEstadoActivo(s.estado)),
+      disponibles,
+      historial: asignadas.filter((s) => !esEstadoActivo(s.estado)),
+    };
   }
-  return { esMecanico: false, asignadas: await listarSolicitudes(), disponibles: [] };
+  return { esMecanico: false, enCurso: await listarSolicitudes(), disponibles: [], historial: [] };
+}
+
+function Seccion({ titulo }: { titulo: string }) {
+  return <Text className="pt-1 text-mini font-bold uppercase tracking-wider text-texto-tenue">{titulo}</Text>;
 }
 
 /** Mis solicitudes (RF-VIEW-008): datos reales del usuario autenticado. */
@@ -44,12 +62,22 @@ export default function SolicitudesScreen() {
   const router = useRouter();
   const listado = useRecurso<Listado | null>(cargarListado, null);
   const { recargar } = listado;
-  const [bandeja, setBandeja] = useState<Bandeja>('asignadas');
+  // El mecánico entra directo a lo que puede tomar.
+  const [bandeja, setBandeja] = useState<Bandeja>('disponibles');
 
   useEffect(() => suscribirseASolicitudes(recargar), [recargar]);
 
   const esMecanico = listado.datos?.esMecanico ?? false;
-  const lista = listado.datos?.[esMecanico ? bandeja : 'asignadas'] ?? [];
+  const enCurso = esMecanico && bandeja === 'disponibles' ? (listado.datos?.enCurso ?? []) : [];
+  const lista = !listado.datos
+    ? []
+    : !esMecanico
+      ? listado.datos.enCurso
+      : bandeja === 'disponibles'
+        ? listado.datos.disponibles
+        : listado.datos.historial;
+  const abrir = (servicio: Servicio) =>
+    router.push({ pathname: '/solicitud/[id]', params: { id: servicio.id } });
 
   return (
     <Pantalla>
@@ -84,17 +112,32 @@ export default function SolicitudesScreen() {
           refreshControl={
             <RefreshControl refreshing={listado.cargando} onRefresh={recargar} tintColor="#FFC107" />
           }>
+          {/* Lo que el mecánico está atendiendo, arriba de lo que puede tomar */}
+          {enCurso.length > 0 ? (
+            <>
+              <Seccion titulo="En curso" />
+              {enCurso.map((servicio) => (
+                <TarjetaSolicitud key={servicio.id} servicio={servicio} onPress={() => abrir(servicio)} />
+              ))}
+              <Seccion titulo="Disponibles" />
+            </>
+          ) : null}
+
           {lista.length === 0 ? (
             <ListaVacia
               titulo={
-                esMecanico && bandeja === 'disponibles'
-                  ? 'No hay solicitudes esperando mecánico'
-                  : 'Todavía no tenés solicitudes'
+                !esMecanico
+                  ? 'Todavía no tenés solicitudes'
+                  : bandeja === 'disponibles'
+                    ? 'No hay solicitudes esperando mecánico'
+                    : 'Todavía no terminaste ningún servicio'
               }
               detalle={
-                esMecanico
-                  ? 'Las nuevas solicitudes aparecen acá automáticamente.'
-                  : 'Cuando solicites asistencia, vas a poder seguirla desde acá.'
+                !esMecanico
+                  ? 'Cuando solicites asistencia, vas a poder seguirla desde acá.'
+                  : bandeja === 'disponibles'
+                    ? 'Las nuevas solicitudes aparecen acá automáticamente.'
+                    : 'Los servicios finalizados, no resueltos o cancelados van a quedar acá.'
               }
               icono="file-tray-outline"
               accion={
@@ -109,11 +152,7 @@ export default function SolicitudesScreen() {
             />
           ) : (
             lista.map((servicio) => (
-              <TarjetaSolicitud
-                key={servicio.id}
-                servicio={servicio}
-                onPress={() => router.push({ pathname: '/solicitud/[id]', params: { id: servicio.id } })}
-              />
+              <TarjetaSolicitud key={servicio.id} servicio={servicio} onPress={() => abrir(servicio)} />
             ))
           )}
         </ScrollView>
