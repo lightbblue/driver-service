@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { formatearFechaHora, formatearMoneda } from '@/lib/formato';
 import { iconoDeCategoria } from '@/lib/iconos';
 import { COLORES } from '@/lib/tema';
+import { iconoVehiculo, textoVehiculo } from '@/lib/vehiculo';
 import { ETIQUETA_ESTADO_PAGO } from '@/services';
 import type { Servicio } from '@/types';
 
@@ -54,6 +55,15 @@ export function TarjetaSolicitud({ servicio, onPress }: { servicio: Servicio; on
           <Text className="text-mini font-bold text-acento">
             {servicio.estado === 'pendiente' ? 'Pedida a ' : ''}
             {servicio.destino.nombre}
+          </Text>
+        </View>
+      ) : null}
+
+      {textoVehiculo(servicio) ? (
+        <View testID={`vehiculo-${servicio.id}`} className="flex-row items-center gap-1.5">
+          <Ionicons name={iconoVehiculo(servicio.tipo_vehiculo)} size={14} color={COLORES.acento} />
+          <Text className="flex-1 text-chico font-semibold text-texto" numberOfLines={1}>
+            {textoVehiculo(servicio)}
           </Text>
         </View>
       ) : null}
