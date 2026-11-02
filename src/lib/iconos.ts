@@ -44,6 +44,7 @@ const ESTADOS: Record<EstadoServicio, DescriptorEstado> = {
   en_camino: { etiqueta: 'Mecánico en camino', hito: 'En camino', icono: 'bicycle-outline', color: 'text-exito', colorIcono: EXITO },
   llegue: { etiqueta: 'Mecánico en el lugar', hito: 'Llegó al lugar', icono: 'flag-outline', color: 'text-exito', colorIcono: EXITO },
   trabajando: { etiqueta: 'Trabajo en curso', hito: 'Inició el trabajo', icono: 'build-outline', color: 'text-acento', colorIcono: ACENTO },
+  por_confirmar: { etiqueta: 'Esperando confirmación', hito: 'Trabajo terminado', icono: 'hourglass-outline', color: 'text-acento', colorIcono: ACENTO },
   finalizado: { etiqueta: 'Finalizado', hito: 'Trabajo finalizado', icono: 'checkmark-circle-outline', color: 'text-exito', colorIcono: EXITO },
   no_resuelta: { etiqueta: 'No resuelta', hito: 'No se pudo resolver', icono: 'alert-circle-outline', color: 'text-peligro', colorIcono: PELIGRO },
   cancelada: { etiqueta: 'Cancelada', hito: 'Solicitud cancelada', icono: 'close-circle-outline', color: 'text-peligro', colorIcono: PELIGRO },

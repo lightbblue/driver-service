@@ -17,7 +17,7 @@ import {
 import type { EstadoServicio, Servicio } from '@/types';
 
 /** Estados en los que el mecánico está yendo o en el lugar: se comparte su posición. */
-const EN_CURSO: EstadoServicio[] = ['aceptado', 'en_camino', 'llegue', 'trabajando'];
+const EN_CURSO: EstadoServicio[] = ['aceptado', 'en_camino', 'llegue', 'trabajando', 'por_confirmar'];
 /** Estados en los que el mecánico está viajando: se dibuja la línea hasta el cliente. */
 const VIAJANDO: EstadoServicio[] = ['aceptado', 'en_camino'];
 /** La ruta se vuelve a pedir recién cuando el mecánico se alejó esto (en metros) del punto de partida. */

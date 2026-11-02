@@ -39,6 +39,8 @@ export {
   calificarServicio,
   cambiarEstadoSolicitud,
   cancelarSolicitud,
+  confirmarLlegada,
+  confirmarResolucion,
   marcarNoResuelta,
   obtenerClienteSolicitud,
   crearSolicitud,

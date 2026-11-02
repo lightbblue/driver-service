@@ -27,7 +27,8 @@ import {
   obtenerDireccion,
   obtenerUbicacionActual,
 } from '@/services';
-import type { CategoriaAveria, MedioPago, PasoSolicitud, UbicacionServicio } from '@/types';
+import { NOMBRE_VEHICULO } from '@/lib/vehiculo';
+import type { CategoriaAveria, MedioPago, PasoSolicitud, TipoVehiculo, UbicacionServicio } from '@/types';
 
 /** Medios de pago al pedir. Mercado Pago es simulado: no pide datos ni cobra dinero real. */
 const MEDIOS_PAGO: {
@@ -50,10 +51,15 @@ const MEDIOS_PAGO: {
   },
 ];
 
+const TIPOS_VEHICULO: { valor: TipoVehiculo; titulo: string; icono: keyof typeof Ionicons.glyphMap }[] = [
+  { valor: 'auto', titulo: 'Auto', icono: 'car-sport-outline' },
+  { valor: 'moto', titulo: 'Moto', icono: 'bicycle-outline' },
+];
+
 const PASOS: PasoSolicitud[] = [
   { numero: 1, titulo: 'Problema' },
   { numero: 2, titulo: 'Ubicación' },
-  { numero: 3, titulo: 'Detalles' },
+  { numero: 3, titulo: 'Vehículo' },
   { numero: 4, titulo: 'Confirmar' },
 ];
 
@@ -75,6 +81,9 @@ export default function NuevaSolicitudScreen() {
   const [paso, setPaso] = useState(1);
   const [categoria, setCategoria] = useState<string | null>(null);
   const [descripcion, setDescripcion] = useState('');
+  // El mecánico ve qué vehículo es antes de aceptar.
+  const [tipoVehiculo, setTipoVehiculo] = useState<TipoVehiculo | null>(null);
+  const [modelo, setModelo] = useState('');
   const [medioPago, setMedioPago] = useState<MedioPago>('mercado_pago');
   const [enviando, setEnviando] = useState(false);
 
@@ -151,13 +160,18 @@ export default function NuevaSolicitudScreen() {
       return;
     }
 
+    if (paso === 3 && (!tipoVehiculo || !modelo.trim())) {
+      Alert.alert('Falta el vehículo', 'Indicá si es auto o moto y qué modelo es.');
+      return;
+    }
+
     if (!esUltimoPaso) {
       if (paso === 1 && !gpsPedido) void buscarUbicacion();
       setPaso(paso + 1);
       return;
     }
 
-    if (!categoriaElegida || !ubicacion || enviando) return;
+    if (!categoriaElegida || !ubicacion || !tipoVehiculo || enviando) return;
 
     setEnviando(true);
 
@@ -167,6 +181,7 @@ export default function NuevaSolicitudScreen() {
         descripcion,
         ubicacion: { ...ubicacion, direccion: direccion.trim() },
         medioPago,
+        vehiculo: { tipo: tipoVehiculo, modelo },
         destino: destino ? { tipo: destino.tipo, id: destino.id } : null,
       });
 
@@ -344,15 +359,49 @@ export default function NuevaSolicitudScreen() {
             <View className="gap-3">
               <View>
                 <Text className="text-xl font-extrabold text-texto">
-                  ¿Necesitás algo más?
+                  ¿Qué vehículo es?
                 </Text>
                 <Text className="text-chico text-texto-tenue">
-                  Podés agregar información adicional (opcional).
+                  El mecánico lo ve antes de aceptar, para saber si puede ayudarte.
                 </Text>
               </View>
 
+              <View className="flex-row gap-3">
+                {TIPOS_VEHICULO.map((tipo) => {
+                  const activo = tipoVehiculo === tipo.valor;
+                  return (
+                    <Pressable
+                      key={tipo.valor}
+                      testID={`vehiculo-${tipo.valor}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: activo }}
+                      onPress={() => setTipoVehiculo(tipo.valor)}
+                      className={cn(
+                        'flex-1 items-center gap-1.5 rounded-tarjeta border py-4',
+                        activo ? 'border-acento bg-acento/10' : 'border-borde bg-superficie',
+                      )}>
+                      <Ionicons name={tipo.icono} size={28} color={activo ? COLORES.acento : COLORES.textoTenue} />
+                      <Text className={cn('text-sm font-bold', activo ? 'text-acento' : 'text-texto')}>
+                        {tipo.titulo}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <CampoTexto
+                testID="campo-modelo"
+                etiqueta="Marca y modelo"
+                icono="pricetag-outline"
+                placeholder={tipoVehiculo === 'moto' ? 'Ej: Honda CB 190R' : 'Ej: Ford Fiesta 2015'}
+                value={modelo}
+                onChangeText={setModelo}
+                maxLength={60}
+              />
+
               <CampoTexto
                 testID="campo-descripcion"
+                etiqueta="Algo más (opcional)"
                 placeholder="Ej: El vehículo no enciende o escucho un ruido raro."
                 multiline
                 value={descripcion}
@@ -382,6 +431,11 @@ export default function NuevaSolicitudScreen() {
                   icono="build-outline"
                   titulo="Problema"
                   valor={categoriaElegida?.nombre ?? 'Sin seleccionar'}
+                />
+                <FilaResumen
+                  icono={tipoVehiculo === 'moto' ? 'bicycle-outline' : 'car-outline'}
+                  titulo="Vehículo"
+                  valor={tipoVehiculo ? `${NOMBRE_VEHICULO[tipoVehiculo]} · ${modelo.trim()}` : 'Sin indicar'}
                 />
                 <FilaResumen
                   icono="location-outline"

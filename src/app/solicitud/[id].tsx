@@ -33,9 +33,12 @@ import {
 import { useRecurso } from '@/hooks/use-recurso';
 import { formatearMoneda } from '@/lib/formato';
 import { COLORES } from '@/lib/tema';
+import { iconoVehiculo, textoVehiculo } from '@/lib/vehiculo';
 import {
   cambiarEstadoSolicitud,
   cancelarSolicitud,
+  confirmarLlegada,
+  confirmarResolucion,
   esCancelable,
   marcarNoResuelta,
   netoMecanico,
@@ -51,15 +54,16 @@ import {
 import type { ClienteSolicitud, EstadoServicio, Servicio } from '@/types';
 
 /**
- * Texto del botón con el que el mecánico registra cada etapa. La base agrupa pasos:
- * aceptar ya deja la solicitud en camino, y llegar ya inicia el trabajo.
+ * Texto del botón con el que el mecánico registra cada etapa. Aceptar ya deja la
+ * solicitud en camino; al llegar, el trabajo empieza cuando el cliente lo confirma, y al
+ * terminar se cobra recién cuando el cliente confirma que quedó resuelto.
  */
 const ACCION_MECANICO: Partial<Record<EstadoServicio, string>> = {
   aceptado: 'Aceptar y salir en camino',
   en_camino: 'Salir en camino',
-  llegue: 'Llegué, empezar el trabajo',
+  llegue: 'Llegué al lugar',
   trabajando: 'Iniciar trabajo',
-  finalizado: 'Finalizar trabajo',
+  por_confirmar: 'Terminé el trabajo',
 };
 
 const MOTIVOS_CLIENTE = [
@@ -81,6 +85,13 @@ const MOTIVOS_NO_RESUELTA = [
   'Faltan repuestos',
   'La falla es más grave',
   'Necesita herramientas especiales',
+];
+
+const MOTIVOS_NO_RESUELTA_CLIENTE = [
+  'El problema sigue',
+  'Se volvió a romper',
+  'No hizo el trabajo',
+  'Quedó peor que antes',
 ];
 
 const MINUTOS_ETA = [10, 20, 30, 45];
@@ -149,6 +160,8 @@ export default function SeguimientoScreen() {
   const puedeCancelar = !!servicio && esCancelable(servicio.estado) && (esCliente || esAsignado);
   const motivoObligatorio = !!servicio?.mecanico_id;
   const motivos = esAsignado ? MOTIVOS_MECANICO : MOTIVOS_CLIENTE;
+  // El mecánico terminó: el cliente confirma si quedó resuelto (recién ahí se cobra).
+  const clienteRevisa = !!servicio && esCliente && servicio.estado === 'por_confirmar';
 
   const ejecutar = async (accion: () => Promise<void>, alTerminar: () => void) => {
     if (enviando) return;
@@ -195,6 +208,16 @@ export default function SeguimientoScreen() {
         setMotivo('');
       },
     );
+  };
+
+  const confirmarResueltoCliente = () => {
+    if (!servicio) return;
+    void ejecutar(() => confirmarResolucion(servicio.id), () => undefined);
+  };
+
+  const confirmarLlegadaCliente = () => {
+    if (!servicio) return;
+    void ejecutar(() => confirmarLlegada(servicio.id), () => undefined);
   };
 
   const confirmarNoResuelta = () => {
@@ -363,6 +386,14 @@ export default function SeguimientoScreen() {
                 </View>
               ) : null}
 
+              {/* Qué vehículo es: el mecánico lo ve antes de aceptar */}
+              {textoVehiculo(servicio) ? (
+                <View testID="texto-vehiculo" className="flex-row items-center gap-1.5">
+                  <Ionicons name={iconoVehiculo(servicio.tipo_vehiculo)} size={16} color={COLORES.acento} />
+                  <Text className="flex-1 text-sm font-bold text-texto">{textoVehiculo(servicio)}</Text>
+                </View>
+              ) : null}
+
               <View className="flex-row items-center gap-1.5">
                 <Ionicons name="location-outline" size={15} color={COLORES.textoTenue} />
                 <Text className="flex-1 text-sm text-texto">{servicio.ubicacion.direccion}</Text>
@@ -372,6 +403,80 @@ export default function SeguimientoScreen() {
                 <Text className="text-chico text-texto-tenue">{servicio.descripcion}</Text>
               ) : null}
             </Tarjeta>
+
+            {/* Llegada: el mecánico la marca y el cliente la confirma para que empiece el trabajo */}
+            {servicio.estado === 'llegue' && esCliente ? (
+              <Tarjeta testID="confirmar-llegada" className="gap-3 border-acento/50 p-4">
+                <View className="flex-row items-start gap-3">
+                  <Ionicons name="flag" size={22} color={COLORES.acento} />
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-base font-extrabold text-texto">¿Ya llegó el mecánico?</Text>
+                    <Text className="text-chico text-texto-tenue">
+                      {servicio.mecanico?.nombre ?? 'El mecánico'} marcó que está en el lugar. Confirmalo
+                      cuando esté con vos para que empiece el trabajo.
+                    </Text>
+                  </View>
+                </View>
+                <Boton
+                  testID="btn-confirmar-llegada"
+                  titulo="Confirmar llegada"
+                  icono="checkmark-circle-outline"
+                  cargando={enviando}
+                  deshabilitado={enviando}
+                  onPress={confirmarLlegadaCliente}
+                />
+              </Tarjeta>
+            ) : null}
+
+            {servicio.estado === 'llegue' && esAsignado ? (
+              <Tarjeta testID="esperando-confirmacion" className="flex-row items-start gap-3 border-acento/40 p-4">
+                <Ionicons name="time-outline" size={20} color={COLORES.acento} />
+                <Text className="flex-1 text-chico text-texto">
+                  Esperando que el cliente confirme tu llegada. Cuando lo haga, empieza el trabajo y vas a
+                  poder finalizarlo.
+                </Text>
+              </Tarjeta>
+            ) : null}
+
+            {clienteRevisa && !sinResolver ? (
+              <Tarjeta testID="confirmar-resolucion" className="gap-3 border-acento/50 p-4">
+                <View className="flex-row items-start gap-3">
+                  <Ionicons name="checkmark-done-circle" size={22} color={COLORES.acento} />
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-base font-extrabold text-texto">¿Quedó resuelto?</Text>
+                    <Text className="text-chico text-texto-tenue">
+                      {servicio.mecanico?.nombre ?? 'El mecánico'} marcó el trabajo como terminado. El pago
+                      se libera recién cuando lo confirmes; si no quedó resuelto, se te devuelve.
+                    </Text>
+                  </View>
+                </View>
+                <Boton
+                  testID="btn-confirmar-resuelto"
+                  titulo="Sí, quedó resuelto"
+                  icono="checkmark-circle-outline"
+                  cargando={enviando}
+                  deshabilitado={enviando}
+                  onPress={confirmarResueltoCliente}
+                />
+                <Boton
+                  testID="btn-no-quedo-resuelto"
+                  titulo="No quedó resuelto"
+                  variante="secundario"
+                  icono="alert-circle-outline"
+                  deshabilitado={enviando}
+                  onPress={() => setSinResolver(true)}
+                />
+              </Tarjeta>
+            ) : null}
+
+            {servicio.estado === 'por_confirmar' && esAsignado ? (
+              <Tarjeta testID="esperando-resolucion" className="flex-row items-start gap-3 border-acento/40 p-4">
+                <Ionicons name="hourglass-outline" size={20} color={COLORES.acento} />
+                <Text className="flex-1 text-chico text-texto">
+                  Esperando que el cliente confirme que quedó resuelto. Cuando lo haga, se cobra el servicio.
+                </Text>
+              </Tarjeta>
+            ) : null}
 
             {/* Mapa integrado: ubicación del cliente y, en curso, el mecánico en vivo (RF-GPS-001..005) */}
             {servicio.estado !== 'cancelada' &&
@@ -398,7 +503,7 @@ export default function SeguimientoScreen() {
 
             {servicio.estado === 'no_resuelta' ? (
               <Tarjeta testID="tarjeta-no-resuelta" className="gap-1 border-peligro/40 p-4">
-                <Text className="text-sm font-bold text-peligro">El mecánico no pudo resolver el problema</Text>
+                <Text className="text-sm font-bold text-peligro">No se resolvió el problema</Text>
                 <Text className="text-chico text-texto">
                   {servicio.motivo_no_resuelta ?? 'Sin motivo indicado'}
                 </Text>
@@ -449,7 +554,7 @@ export default function SeguimientoScreen() {
                 <CampoTexto
                   testID="campo-observacion"
                   placeholder={
-                    proximo === 'finalizado'
+                    proximo === 'por_confirmar'
                       ? 'Trabajo realizado (opcional)'
                       : 'Observación (opcional)'
                   }
@@ -468,7 +573,7 @@ export default function SeguimientoScreen() {
                 />
 
                 {/* Trabajando: se puede cerrar sin resolver; el cobro se devuelve */}
-                {proximo === 'finalizado' && !sinResolver ? (
+                {proximo === 'por_confirmar' && !sinResolver ? (
                   <Boton
                     testID="btn-no-resuelta"
                     titulo="No se pudo resolver"
@@ -481,16 +586,18 @@ export default function SeguimientoScreen() {
               </Tarjeta>
             ) : null}
 
-            {proximo === 'finalizado' && sinResolver ? (
+            {(proximo === 'por_confirmar' || clienteRevisa) && sinResolver ? (
               <Tarjeta testID="panel-no-resuelta" className="gap-3 border-peligro/40 p-4">
                 <View className="gap-0.5">
                   <Text className="text-sm font-bold text-texto">¿Por qué no se pudo resolver?</Text>
                   <Text className="text-mini text-texto-tenue">
-                    Se le devuelve el pago al cliente y el servicio no cuenta como resuelto.
+                    {clienteRevisa
+                      ? 'Se te devuelve el pago y el servicio no cuenta como resuelto.'
+                      : 'Se le devuelve el pago al cliente y el servicio no cuenta como resuelto.'}
                   </Text>
                 </View>
                 <View className="flex-row flex-wrap gap-2">
-                  {MOTIVOS_NO_RESUELTA.map((m) => (
+                  {(clienteRevisa ? MOTIVOS_NO_RESUELTA_CLIENTE : MOTIVOS_NO_RESUELTA).map((m) => (
                     <Chip
                       key={m}
                       texto={m}

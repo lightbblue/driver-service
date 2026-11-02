@@ -19,6 +19,8 @@ export type EstadoServicio =
   | 'en_camino'
   | 'llegue'
   | 'trabajando'
+  /** El mecánico terminó; el cliente confirma si quedó resuelto (recién ahí se cobra). */
+  | 'por_confirmar'
   | 'finalizado'
   | 'no_resuelta'
   | 'cancelada';
@@ -223,6 +225,9 @@ export interface PagoServicio {
   actualizado_en: string;
 }
 
+/** La app atiende autos y motos: el cliente indica cuál es al pedir. */
+export type TipoVehiculo = 'auto' | 'moto';
+
 /** Tabla `calificaciones`: de 1 a 5 estrellas, solo el cliente y solo un servicio finalizado (RN-011). */
 export interface CalificacionServicio {
   puntaje: number;
@@ -242,6 +247,9 @@ export interface Servicio {
   categoria_nombre: string;
   categoria_icono: string | null;
   descripcion: string | null;
+  /** Null en solicitudes anteriores a que se pidiera el vehículo. */
+  tipo_vehiculo: TipoVehiculo | null;
+  vehiculo_modelo: string | null;
   ubicacion: UbicacionServicio;
   estado: EstadoServicio;
   eta_minutos: number | null;
