@@ -8,7 +8,7 @@ import { View } from 'react-native';
  * El velo garantiza el contraste mínimo de texto sobre foto (RNF-UX-005).
  */
 const FONDOS = {
-  ruta: 'https://images.unsplash.com/photo-1558981285-6f0c94958bb6?w=1200&q=80',
+  ruta: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1200&q=80',
   taller: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?w=1200&q=80',
   montania: 'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=1200&q=80',
 } as const;

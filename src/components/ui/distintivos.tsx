@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 const DISTINTIVOS = [
   { id: 'asistencia', icono: 'shield-checkmark-outline', titulo: 'ASISTENCIA\nRÁPIDA' },
   { id: 'region', icono: 'location-outline', titulo: 'EN TODA\nLA REGIÓN' },
-  { id: 'comunidad', icono: 'people-outline', titulo: 'COMUNIDAD\nMOTERA' },
+  { id: 'vehiculos', icono: 'car-sport-outline', titulo: 'AUTOS\nY MOTOS' },
 ] as const;
 
 /** Los tres distintivos inferiores de las pantallas de acceso. */
