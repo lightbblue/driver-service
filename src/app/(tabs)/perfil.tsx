@@ -4,7 +4,13 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
-import { FilaEstadisticas, FilaMenu, type ItemMenu, ModalCerrarSesion } from '@/components/perfil';
+import {
+  FilaEstadisticas,
+  FilaMenu,
+  InterruptorDisponibilidad,
+  type ItemMenu,
+  ModalCerrarSesion,
+} from '@/components/perfil';
 import { Avatar, Boton, Cargando, FondoMarca, LogoRider, Pantalla } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
 import { COLORES } from '@/lib/tema';
@@ -28,6 +34,14 @@ const MI_TALLER: ItemMenu = {
   titulo: 'Mi taller',
   subtitulo: 'Foto, datos, ubicación y mecánicos',
   icono: 'storefront-outline',
+};
+
+/** Solo para mecánicos: lo cobrado y lo que la plataforma le tiene que liquidar. */
+const MIS_GANANCIAS: ItemMenu = {
+  id: 'ganancias',
+  titulo: 'Mis ganancias',
+  subtitulo: 'Servicios cobrados, tu neto y el total a liquidar',
+  icono: 'wallet-outline',
 };
 
 const ROLES: Record<string, string> = {
@@ -170,9 +184,15 @@ export default function PerfilScreen() {
           {/* Solo el mecánico tiene estadísticas: el cliente no las necesita */}
           {usuario?.estadisticas ? <FilaEstadisticas estadisticas={usuario.estadisticas} /> : null}
 
+          {/* Disponibilidad del mecánico (RF-PROF-003) */}
+          {usuario?.rol === 'mecanico' ? <InterruptorDisponibilidad /> : null}
+
           <View className="gap-2.5 pt-1">
             {usuario?.rol === 'mecanico' ? (
               <FilaMenu item={MI_TALLER} onPress={() => router.push('/mi-taller')} />
+            ) : null}
+            {usuario?.rol === 'mecanico' ? (
+              <FilaMenu item={MIS_GANANCIAS} onPress={() => router.push('/ganancias')} />
             ) : null}
             {SECCIONES.map((seccion) => (
               <FilaMenu key={seccion.id} item={seccion} />
