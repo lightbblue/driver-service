@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
+import { COLORES } from '@/lib/tema';
 
 export type ItemMenu = {
   id: string;
@@ -18,7 +19,7 @@ export function FilaMenu({ item, onPress }: { item: ItemMenu; onPress?: () => vo
       onPress={onPress}
       className="min-h-[68px] flex-row items-center gap-3 rounded-tarjeta border border-borde bg-superficie px-4 py-3 active:bg-superficie-alta">
       <View className="h-10 w-10 items-center justify-center rounded-full bg-superficie-alta">
-        <Ionicons name={item.icono} size={19} color="#FFFFFF" />
+        <Ionicons name={item.icono} size={19} color={COLORES.texto} />
       </View>
       <View className="flex-1">
         <Text className="text-base font-bold text-texto">{item.titulo}</Text>
@@ -26,7 +27,7 @@ export function FilaMenu({ item, onPress }: { item: ItemMenu; onPress?: () => vo
           {item.subtitulo}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={19} color="#6B7280" />
+      <Ionicons name="chevron-forward" size={19} color={COLORES.textoSutil} />
     </Pressable>
   );
 }

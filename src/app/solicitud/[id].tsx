@@ -248,7 +248,7 @@ export default function SeguimientoScreen() {
             hitSlop={10}
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/solicitudes'))}
             className="mr-3 h-10 w-10 items-center justify-center rounded-full active:opacity-60">
-            <Ionicons name="arrow-back" size={23} color="#F9FAFB" />
+            <Ionicons name="arrow-back" size={23} color={COLORES.texto} />
           </Pressable>
           <View className="flex-1">
             <Text className="text-lg font-extrabold text-texto">Seguimiento</Text>
@@ -278,7 +278,7 @@ export default function SeguimientoScreen() {
             contentContainerClassName="gap-4 px-4 pb-8 pt-2"
             keyboardShouldPersistTaps="handled"
             refreshControl={
-              <RefreshControl refreshing={detalle.cargando} onRefresh={recargar} tintColor="#FFC107" />
+              <RefreshControl refreshing={detalle.cargando} onRefresh={recargar} tintColor={COLORES.acento} />
             }>
             {/* Estado actual */}
             <Tarjeta className="gap-3 p-4">
@@ -333,7 +333,7 @@ export default function SeguimientoScreen() {
                       hitSlop={8}
                       onPress={() => Linking.openURL(`tel:${servicio.mecanico?.telefono}`)}
                       className="h-9 w-9 items-center justify-center rounded-full bg-acento active:bg-acento-oscuro">
-                      <Ionicons name="call" size={17} color="#0B0B0D" />
+                      <Ionicons name="call" size={17} color={COLORES.textoInverso} />
                     </Pressable>
                   ) : null}
                 </View>

@@ -21,6 +21,7 @@ import {
   suscribirseASolicitudes,
 } from '@/services';
 import type { Servicio } from '@/types';
+import { COLORES } from '@/lib/tema';
 
 type Bandeja = 'disponibles' | 'historial';
 
@@ -110,7 +111,7 @@ export default function SolicitudesScreen() {
           testID="lista-solicitudes"
           contentContainerClassName="gap-3 px-4 pb-barra-inferior pt-1"
           refreshControl={
-            <RefreshControl refreshing={listado.cargando} onRefresh={recargar} tintColor="#FFC107" />
+            <RefreshControl refreshing={listado.cargando} onRefresh={recargar} tintColor={COLORES.acento} />
           }>
           {/* Lo que el mecánico está atendiendo, arriba de lo que puede tomar */}
           {enCurso.length > 0 ? (

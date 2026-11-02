@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
 import type { PasoSolicitud } from '@/types';
+import { COLORES } from '@/lib/tema';
 
 type IndicadorPasosProps = {
   pasos: PasoSolicitud[];
@@ -40,7 +41,7 @@ export function IndicadorPasos({ pasos, pasoActual }: IndicadorPasosProps) {
                       : 'border-borde bg-superficie',
                 )}>
                 {completado ? (
-                  <Ionicons name="checkmark" size={16} color="#0B0B0D" />
+                  <Ionicons name="checkmark" size={16} color={COLORES.textoInverso} />
                 ) : (
                   <Text
                     className={cn(

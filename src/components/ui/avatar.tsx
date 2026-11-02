@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { cn } from '@/lib/cn';
+import { COLORES } from '@/lib/tema';
 
 type AvatarProps = {
   uri?: string | null;
@@ -33,7 +34,7 @@ export function Avatar({ uri, tamanio = 40, icono = 'person', className }: Avata
           onError={() => setFallo(true)}
         />
       ) : (
-        <Ionicons name={icono} size={tamanio * 0.55} color="#6B7280" />
+        <Ionicons name={icono} size={tamanio * 0.55} color={COLORES.textoSutil} />
       )}
     </View>
   );

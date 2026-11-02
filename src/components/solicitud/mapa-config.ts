@@ -1,3 +1,5 @@
+import { COLORES } from '@/lib/tema';
+
 /**
  * Configuración compartida por el mapa web (Leaflet) y el nativo (Leaflet en WebView).
  */
@@ -45,8 +47,8 @@ export const CSS_PIN = `
   box-sizing: border-box;
   width: 30px; height: 30px;
   border-radius: 50% 50% 50% 0;
-  background: #FFC107;
-  border: 3px solid #0B0B0D;
+  background: ${COLORES.acento};
+  border: 3px solid ${COLORES.textoInverso};
   transform: rotate(-45deg);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
@@ -54,7 +56,7 @@ export const CSS_PIN = `
   content: '';
   position: absolute; top: 7px; left: 7px;
   width: 10px; height: 10px; border-radius: 50%;
-  background: #0B0B0D;
+  background: ${COLORES.fondo};
 }
 `;
 
