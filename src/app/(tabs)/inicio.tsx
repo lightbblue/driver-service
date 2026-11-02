@@ -11,10 +11,10 @@ import { Cargando, EncabezadoSeccion, ListaVacia, Pantalla } from '@/components/
 import { useRecurso } from '@/hooks/use-recurso';
 import {
   listarConsejos,
-  listarMecanicosDestacados,
   listarPromociones,
+  listarTalleresDestacados,
+  obtenerPosicionAproximada,
   obtenerUsuarioActual,
-  tieneUbicacion,
 } from '@/services';
 import type { Consejo, Mecanico, Perfil, Promocion } from '@/types';
 
@@ -27,7 +27,11 @@ export default function HomeScreen() {
 
   const usuario = useRecurso<Perfil | null>(obtenerUsuarioActual, null);
   const promociones = useRecurso<Promocion[]>(listarPromociones, []);
-  const mecanicos = useRecurso<Mecanico[]>(() => listarMecanicosDestacados(), []);
+  // Talleres cercanos mejor calificados; sin permiso de ubicación, solo por calificación.
+  const talleres = useRecurso<Mecanico[]>(
+    async () => listarTalleresDestacados(await obtenerPosicionAproximada()),
+    [],
+  );
   const consejos = useRecurso<Consejo[]>(listarConsejos, []);
 
   const accesos: AccesoRapido[] = [
@@ -84,20 +88,20 @@ export default function HomeScreen() {
 
         <AccesosRapidos accesos={accesos} />
 
-        <EncabezadoSeccion titulo="Mecánicos destacados" accion="Ver todos"
-          onPressAccion={() => router.push({ pathname: '/mapa', params: { vista: 'lista' } })}
+        <EncabezadoSeccion titulo="Talleres destacados" accion="Ver todos"
+          onPressAccion={() => router.push({ pathname: '/mapa', params: { vista: 'mapa' } })}
         />
-        {mecanicos.cargando ? (
-          <Cargando mensaje="Buscando mecánicos…" />
-        ) : mecanicos.datos.length === 0 ? (
+        {talleres.cargando ? (
+          <Cargando mensaje="Buscando talleres…" />
+        ) : talleres.datos.length === 0 ? (
           <ListaVacia
-            titulo="Todavía no hay mecánicos destacados"
-            detalle="Cuando haya prestadores disponibles en tu zona, los vas a ver acá."
-            icono="construct-outline"
+            titulo="Todavía no hay talleres destacados"
+            detalle="Cuando haya talleres en tu zona, los vas a ver acá."
+            icono="storefront-outline"
           />
         ) : (
           <FlatList
-            data={mecanicos.datos}
+            data={talleres.datos}
             keyExtractor={(item) => item.id}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -105,12 +109,9 @@ export default function HomeScreen() {
             renderItem={({ item }) => (
               <TarjetaMecanico
                 mecanico={item}
-                // Con taller abre el mapa centrado en él; sin taller, la lista. En los dos casos se abre su ficha.
+                // Abre el mapa centrado en el taller, con su ficha abierta.
                 onPress={() =>
-                  router.push({
-                    pathname: '/mapa',
-                    params: { vista: tieneUbicacion(item) ? 'mapa' : 'lista', mecanico: item.id },
-                  })
+                  router.push({ pathname: '/mapa', params: { vista: 'mapa', mecanico: item.id } })
                 }
               />
             )}

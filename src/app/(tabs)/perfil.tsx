@@ -17,14 +17,18 @@ import type { Perfil } from '@/types';
 
 const SECCIONES: ItemMenu[] = [
   { id: 'datos', titulo: 'Mis datos', subtitulo: 'Información personal, contacto y dirección', icono: 'person-outline' },
-  { id: 'motos', titulo: 'Mis motos', subtitulo: 'Gestioná tus vehículos', icono: 'bicycle-outline' },
-  { id: 'historial', titulo: 'Historial de solicitudes', subtitulo: 'Revisá tus asistencias anteriores', icono: 'time-outline' },
-  { id: 'favoritos', titulo: 'Favoritos', subtitulo: 'Tus mecánicos guardados', icono: 'heart-outline' },
-  { id: 'pagos', titulo: 'Métodos de pago', subtitulo: 'Tarjetas y otros medios', icono: 'card-outline' },
   { id: 'notificaciones', titulo: 'Notificaciones', subtitulo: 'Configurá tus alertas', icono: 'notifications-outline' },
   { id: 'seguridad', titulo: 'Seguridad', subtitulo: 'Contraseña, verificación en dos pasos', icono: 'shield-checkmark-outline' },
   { id: 'ayuda', titulo: 'Ayuda y soporte', subtitulo: 'Preguntas frecuentes y contacto', icono: 'help-circle-outline' },
 ];
+
+/** Solo para mecánicos: administrar (o consultar) su taller. */
+const MI_TALLER: ItemMenu = {
+  id: 'mi-taller',
+  titulo: 'Mi taller',
+  subtitulo: 'Foto, datos, ubicación y mecánicos',
+  icono: 'storefront-outline',
+};
 
 const ROLES: Record<string, string> = {
   cliente: 'Usuario',
@@ -103,31 +107,8 @@ export default function PerfilScreen() {
         <View className="overflow-hidden">
           <FondoMarca variante="montania" velo="suave" />
           <View className="px-4 pb-5 pt-2">
-            <View className="mb-6 flex-row items-center justify-between">
+            <View className="mb-6 min-h-[40px] flex-row items-center">
               <LogoRider tamanio="chico" />
-              <View className="flex-row items-center gap-2">
-                <Pressable
-                  testID="btn-notificaciones"
-                  accessibilityRole="button"
-                  accessibilityLabel="Notificaciones"
-                  accessibilityHint="Abre la lista de avisos y notificaciones del sistema"
-                  hitSlop={8}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie"
-                >
-                  <Ionicons name="notifications-outline" size={19} color={COLORES.texto} />
-                  <View className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-peligro" />
-                </Pressable>
-                <Pressable
-                  testID="btn-configuracion"
-                  accessibilityRole="button"
-                  accessibilityLabel="Configuración"
-                  accessibilityHint="Abre los ajustes y preferencias de la cuenta"
-                  hitSlop={8}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-fondo/60 active:bg-superficie"
-                >
-                  <Ionicons name="settings-outline" size={19} color={COLORES.texto} />
-                </Pressable>
-              </View>
             </View>
 
             {cargando && !usuario ? (
@@ -159,8 +140,9 @@ export default function PerfilScreen() {
                   <Text className="text-2xl font-extrabold text-texto" numberOfLines={2}>
                     {usuario?.nombre_completo ?? 'Sin nombre'}
                   </Text>
-                  <Text className="text-sm text-texto-tenue">
+                  <Text testID="texto-rol-miembro" className="text-sm text-texto-tenue">
                     {ROLES[usuario?.rol ?? 'cliente'] ?? 'Usuario'}
+                    {usuario?.miembro_desde ? ` · Miembro desde ${usuario.miembro_desde}` : ''}
                   </Text>
                   {localidad ? (
                     <View className="flex-row items-center gap-1">
@@ -185,9 +167,13 @@ export default function PerfilScreen() {
         </View>
 
         <View className="gap-3 px-4 pt-4">
-          <FilaEstadisticas estadisticas={usuario?.estadisticas ?? null} />
+          {/* Solo el mecánico tiene estadísticas: el cliente no las necesita */}
+          {usuario?.estadisticas ? <FilaEstadisticas estadisticas={usuario.estadisticas} /> : null}
 
           <View className="gap-2.5 pt-1">
+            {usuario?.rol === 'mecanico' ? (
+              <FilaMenu item={MI_TALLER} onPress={() => router.push('/mi-taller')} />
+            ) : null}
             {SECCIONES.map((seccion) => (
               <FilaMenu key={seccion.id} item={seccion} />
             ))}

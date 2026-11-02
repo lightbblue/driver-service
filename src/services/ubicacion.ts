@@ -75,6 +75,23 @@ export async function obtenerDireccion(latitud: number, longitud: number): Promi
 }
 
 /** Pide permiso y devuelve la posición GPS actual con su dirección. */
+/**
+ * Posición aproximada del usuario para calcular distancias (inicio, destacados).
+ * No pide dirección ni muestra errores: sin permiso o sin GPS devuelve null.
+ */
+export async function obtenerPosicionAproximada(): Promise<{ latitud: number; longitud: number } | null> {
+  try {
+    const permiso = await Location.requestForegroundPermissionsAsync();
+    if (permiso.status !== 'granted') return null;
+    const posicion =
+      (await Location.getLastKnownPositionAsync()) ??
+      (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+    return { latitud: posicion.coords.latitude, longitud: posicion.coords.longitude };
+  } catch {
+    return null;
+  }
+}
+
 export async function obtenerUbicacionActual(): Promise<UbicacionServicio> {
   const permiso = await Location.requestForegroundPermissionsAsync();
 
