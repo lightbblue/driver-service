@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 
+import { CampanaNotificaciones } from '@/components/notificaciones/campana-notificaciones';
 import { Avatar, LogoRider } from '@/components/ui';
 import type { Perfil } from '@/types';
 
@@ -24,15 +25,7 @@ export function EncabezadoHome({ usuario, onPressPerfil }: EncabezadoHomeProps) 
       <LogoRider tamanio="chico" />
 
       <View className="flex-row items-center gap-2">
-        <Pressable
-          testID="btn-notificaciones"
-          accessibilityRole="button"
-          accessibilityLabel="Notificaciones"
-          hitSlop={8}
-          className="h-10 w-10 items-center justify-center rounded-full bg-superficie active:bg-superficie-alta">
-          <Ionicons name="notifications-outline" size={19} color="#FFFFFF" />
-          <View className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-peligro" />
-        </Pressable>
+        <CampanaNotificaciones usuarioId={usuario?.id ?? null} />
 
         <Pressable
           testID="btn-perfil-encabezado"

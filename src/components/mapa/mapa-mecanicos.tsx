@@ -50,6 +50,8 @@ export const MapaMecanicos = forwardRef<MapaMecanicosRef, MapaMecanicosProps>(fu
       latitud: m.latitud,
       longitud: m.longitud,
       tipo: m.id === mecanicoSeleccionado?.id ? 'taller-elegido' : m.disponible ? 'taller' : 'taller-off',
+      // Con foto, el marcador muestra el taller; sin foto, el ícono de siempre.
+      foto: m.logo_url,
     }));
     return ubicacionUsuario
       ? [...talleres, { id: ID_USUARIO, ...ubicacionUsuario, tipo: 'yo' }]

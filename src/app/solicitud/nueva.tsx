@@ -1,6 +1,6 @@
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
@@ -61,6 +61,14 @@ const MAX_DESCRIPCION = 200;
 
 export default function NuevaSolicitudScreen() {
   const router = useRouter();
+  // Desde el modal de un taller (o de un mecánico en ruta) la solicitud va solo a ellos.
+  const params = useLocalSearchParams<{ destinoTipo?: string; destinoId?: string; destinoNombre?: string }>();
+  const tipoDestino: 'taller' | 'mecanico' | null =
+    params.destinoTipo === 'taller' ? 'taller' : params.destinoTipo === 'mecanico' ? 'mecanico' : null;
+  const destino =
+    tipoDestino && params.destinoId
+      ? { tipo: tipoDestino, id: params.destinoId, nombre: params.destinoNombre ?? '' }
+      : null;
 
   const categorias = useRecurso<CategoriaAveria[]>(listarCategoriasAveria, []);
 
@@ -159,6 +167,7 @@ export default function NuevaSolicitudScreen() {
         descripcion,
         ubicacion: { ...ubicacion, direccion: direccion.trim() },
         medioPago,
+        destino: destino ? { tipo: destino.tipo, id: destino.id } : null,
       });
 
       router.replace({ pathname: '/solicitud/confirmada', params: { id, codigo } });
@@ -201,6 +210,22 @@ export default function NuevaSolicitudScreen() {
         </View>
 
         <IndicadorPasos pasos={PASOS} pasoActual={paso} />
+
+        {destino ? (
+          <View
+            testID="aviso-destino"
+            className="mx-4 mt-2 flex-row items-center gap-2 rounded-campo border border-acento/40 bg-acento/10 px-3 py-2">
+            <Ionicons
+              name={destino.tipo === 'taller' ? 'storefront-outline' : 'person-outline'}
+              size={16}
+              color={COLORES.acento}
+            />
+            <Text className="flex-1 text-mini text-texto">
+              {destino.tipo === 'taller' ? 'Se la pedís a un mecánico de ' : 'Se la pedís a '}
+              <Text className="font-bold">{destino.nombre || 'este prestador'}</Text>
+            </Text>
+          </View>
+        ) : null}
 
         <ScrollView
           className="flex-1"

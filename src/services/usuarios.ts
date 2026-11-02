@@ -2,7 +2,7 @@ import type { User } from '@supabase/supabase-js';
 
 import { lanzar } from '@/lib/errores';
 import { supabase } from '@/lib/supabase';
-import type { Perfil, RolUsuario } from '@/types';
+import type { EstadisticasPerfil, Perfil, RolUsuario } from '@/types';
 
 import { obtenerSesion } from './sesion';
 
@@ -20,7 +20,34 @@ function rolDe(usuario: User | null): RolUsuario {
   return rol === 'mecanico' || rol === 'admin' ? rol : 'cliente';
 }
 
-function aPerfil(fila: FilaPerfil, usuario: User | null): Perfil {
+type FilaEstadisticas = {
+  resueltas: number;
+  calificacion: number | string | null;
+  cantidad_calificaciones: number;
+};
+
+/** Estadísticas del mecánico autenticado. Para un cliente devuelve null: no se muestran. */
+async function estadisticasMecanico(rol: RolUsuario): Promise<EstadisticasPerfil | null> {
+  if (rol !== 'mecanico') return null;
+
+  // Si fallan, el perfil se muestra igual, sin el cuadro de estadísticas.
+  const { data, error } = await supabase.rpc('estadisticas_mecanico_actual');
+  if (error) {
+    console.warn('[PERFIL] No se pudieron cargar las estadísticas:', error.message);
+    return null;
+  }
+
+  const fila = (data as FilaEstadisticas[] | null)?.[0];
+  if (!fila) return { resueltas: 0, calificacion: null, cantidad_calificaciones: 0 };
+
+  return {
+    resueltas: fila.resueltas,
+    calificacion: fila.calificacion == null ? null : Number(fila.calificacion),
+    cantidad_calificaciones: fila.cantidad_calificaciones,
+  };
+}
+
+function aPerfil(fila: FilaPerfil, usuario: User | null, estadisticas: EstadisticasPerfil | null = null): Perfil {
   return {
     id: fila.id,
     nombre_completo: fila.nombre || 'Sin nombre',
@@ -31,12 +58,8 @@ function aPerfil(fila: FilaPerfil, usuario: User | null): Perfil {
     localidad: null,
     provincia: null,
     creado_en: fila.creado_en,
-    estadisticas: {
-      solicitudes: 0,
-      resueltas: 0,
-      calificacion: null,
-      miembro_desde: new Date(fila.creado_en).getFullYear(),
-    },
+    miembro_desde: new Date(fila.creado_en).getFullYear(),
+    estadisticas,
   };
 }
 
@@ -54,7 +77,8 @@ export async function obtenerUsuarioActual(): Promise<Perfil | null> {
   if (error) lanzar(error, 'No se pudo cargar tu perfil');
   if (!data) return null;
 
-  return aPerfil(data as FilaPerfil, sesion.user);
+  const estadisticas = await estadisticasMecanico(rolDe(sesion.user));
+  return aPerfil(data as FilaPerfil, sesion.user, estadisticas);
 }
 
 /** Busca un perfil por id. Las políticas RLS solo dejan leer el propio. */

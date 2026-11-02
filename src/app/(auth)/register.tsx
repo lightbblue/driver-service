@@ -16,11 +16,13 @@ import {
   SubirImagenes,
   type OpcionConmutador,
 } from '@/components/ui';
+import { ElegirTaller } from '@/components/registro/elegir-taller';
+import { SelectorEspecialidades } from '@/components/registro/selector-especialidades';
 import { UbicacionTaller } from '@/components/registro/ubicacion-taller';
 import { useLoginGoogle } from '@/hooks/use-login-google';
 import { COLORES } from '@/lib/tema';
 import { registrarCuenta } from '@/services';
-import type { UbicacionServicio } from '@/types';
+import type { TallerOpcion, UbicacionServicio } from '@/types';
 
 type Variante = 'usuario' | 'mecanico';
 
@@ -29,13 +31,29 @@ const OPCIONES: OpcionConmutador<Variante>[] = [
   { valor: 'mecanico', etiqueta: 'Mecánico', icono: 'construct-outline' },
 ];
 
-/** Con taller aparece en el mapa; en ruta solo atiende donde está el cliente. */
-type ModalidadMecanico = 'taller' | 'ruta';
+/**
+ * Crea su taller (aparece en el mapa), se suma a uno que ya está en la app,
+ * o trabaja en ruta (va hasta donde está el cliente).
+ */
+type ModalidadMecanico = 'taller' | 'unirme' | 'ruta';
 
 const OPCIONES_MODALIDAD: OpcionConmutador<ModalidadMecanico>[] = [
-  { valor: 'taller', etiqueta: 'Tengo taller', icono: 'storefront-outline' },
-  { valor: 'ruta', etiqueta: 'Asistencia en ruta', icono: 'car-outline' },
+  { valor: 'taller', etiqueta: 'Taller nuevo', icono: 'storefront-outline' },
+  { valor: 'unirme', etiqueta: 'Me sumo', icono: 'people-outline' },
+  { valor: 'ruta', etiqueta: 'En ruta', icono: 'car-outline' },
 ];
+
+const AYUDA_MODALIDAD: Record<ModalidadMecanico, string> = {
+  taller: 'Cargás tu taller y quedás como dueño: aparece en el mapa y aceptás a los mecánicos que se sumen.',
+  unirme: 'Elegí el taller donde trabajás. El dueño tiene que aceptarte; mientras tanto trabajás en ruta.',
+  ruta: 'Vas hasta donde está el cliente. No aparecés en el mapa, pero recibís los pedidos de tu zona.',
+};
+
+const MODO_REGISTRO: Record<ModalidadMecanico, 'nuevo' | 'existente' | 'ruta'> = {
+  taller: 'nuevo',
+  unirme: 'existente',
+  ruta: 'ruta',
+};
 
 const TEXTOS: Record<Variante, { titulo: string; bajada: string; boton: string }> = {
   usuario: {
@@ -66,9 +84,10 @@ export default function RegisterScreen() {
   // Campos propios del mecánico
   const [modalidad, setModalidad] = useState<ModalidadMecanico>('taller');
   const [taller, setTaller] = useState('');
+  const [tallerElegido, setTallerElegido] = useState<TallerOpcion | null>(null);
   const [zona, setZona] = useState('');
   const [ubicacionMapa, setUbicacionMapa] = useState<UbicacionServicio | null>(null);
-  const [especialidades, setEspecialidades] = useState('');
+  const [especialidades, setEspecialidades] = useState<string[]>([]);
   const [descripcion, setDescripcion] = useState('');
   /** Mientras el dedo está sobre el mapa se pausa el scroll del formulario. */
   const [mapaActivo, setMapaActivo] = useState(false);
@@ -87,6 +106,9 @@ export default function RegisterScreen() {
     }
     if (esMecanico && !zona.trim()) {
       return 'Indicá la zona donde trabajás para que los clientes puedan encontrarte.';
+    }
+    if (esMecanico && modalidad === 'unirme' && !tallerElegido) {
+      return 'Elegí el taller donde trabajás.';
     }
     if (tieneTaller && !taller.trim()) {
       return 'Indicá el nombre de tu taller.';
@@ -123,13 +145,11 @@ export default function RegisterScreen() {
         rol: esMecanico ? 'mecanico' : 'cliente',
         taller: esMecanico
           ? {
-              // En ruta no hay taller: se usa el nombre de la persona.
+              modo: MODO_REGISTRO[modalidad],
+              tallerId: modalidad === 'unirme' ? (tallerElegido?.id ?? null) : null,
               nombre: tieneTaller ? taller : '',
               zona,
-              especialidades: especialidades
-                .split(',')
-                .map((e) => e.trim())
-                .filter(Boolean),
+              especialidades,
               descripcion,
               ubicacion: tieneTaller ? ubicacionMapa : null,
             }
@@ -231,12 +251,11 @@ export default function RegisterScreen() {
                     valor={modalidad}
                     onCambio={setModalidad}
                   />
-                  <Text className="text-mini text-texto-tenue">
-                    {tieneTaller
-                      ? 'Tu taller aparece en el mapa y además recibís pedidos de asistencia.'
-                      : 'Vas hasta donde está el cliente. No aparecés en el mapa, pero recibís los pedidos de tu zona.'}
-                  </Text>
+                  <Text className="text-mini text-texto-tenue">{AYUDA_MODALIDAD[modalidad]}</Text>
                 </View>
+                {modalidad === 'unirme' ? (
+                  <ElegirTaller elegido={tallerElegido} onElegir={setTallerElegido} />
+                ) : null}
                 {tieneTaller ? (
                   <CampoTexto
                     testID="campo-taller"
@@ -262,14 +281,10 @@ export default function RegisterScreen() {
                     onInteraccion={setMapaActivo}
                   />
                 ) : null}
-                <CampoTexto
-                  testID="campo-especialidades"
-                  etiqueta="Especialidades"
-                  icono="build-outline"
-                  placeholder="Ej: Motos, eléctricos, emergencias"
-                  value={especialidades}
-                  onChangeText={setEspecialidades}
-                />
+                {/* Al sumarse a un taller usa las del taller: no hace falta elegirlas */}
+                {modalidad !== 'unirme' ? (
+                  <SelectorEspecialidades valor={especialidades} onCambio={setEspecialidades} />
+                ) : null}
                 <CampoTexto
                   testID="campo-descripcion"
                   etiqueta="Descripción (opcional)"

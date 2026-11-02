@@ -14,6 +14,10 @@ export type DatosRegistro = {
   rol: Extract<RolUsuario, 'cliente' | 'mecanico'>;
   /** Solo para mecánicos. */
   taller?: {
+    /** Crea su taller, se suma a uno que ya está en la app, o trabaja en ruta. */
+    modo: 'nuevo' | 'existente' | 'ruta';
+    /** Taller elegido cuando `modo` es `existente`. */
+    tallerId?: string | null;
     nombre: string;
     /** Zona donde trabaja (ej: Pilar). Se guarda en `mecanicos.localidad`. */
     zona: string;
@@ -120,6 +124,10 @@ export async function registrarCuenta(datos: DatosRegistro): Promise<{ requiereC
         rol: datos.rol,
         ...(datos.taller
           ? {
+              taller_modo: datos.taller.modo,
+              ...(datos.taller.modo === 'existente' && datos.taller.tallerId
+                ? { taller_id: datos.taller.tallerId }
+                : {}),
               taller_nombre: datos.taller.nombre.trim(),
               taller_ubicacion: datos.taller.zona.trim(),
               taller_especialidades: datos.taller.especialidades,

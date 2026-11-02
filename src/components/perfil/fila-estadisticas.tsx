@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
+import { COLORES } from '@/lib/tema';
 import type { EstadisticasPerfil } from '@/types';
 
 type Metrica = {
@@ -10,46 +11,43 @@ type Metrica = {
   etiqueta: string;
 };
 
-/** Fila de estadísticas del perfil, leída de `usuarios.json` (RF-VIEW-005). */
-export function FilaEstadisticas({ estadisticas }: { estadisticas: EstadisticasPerfil | null }) {
+/**
+ * Estadísticas del mecánico en su perfil (RF-VIEW-005): cuántos servicios resolvió
+ * y el promedio de estrellas que le dieron los clientes. No se muestran las
+ * solicitudes tomadas: el cliente elige por las estrellas, no por el volumen.
+ */
+export function FilaEstadisticas({ estadisticas }: { estadisticas: EstadisticasPerfil }) {
   const metricas: Metrica[] = [
     {
-      id: 'solicitudes',
-      icono: 'reader-outline',
-      valor: String(estadisticas?.solicitudes ?? 0),
-      etiqueta: 'Solicitudes',
-    },
-    {
       id: 'resueltas',
-      icono: 'time-outline',
-      valor: String(estadisticas?.resueltas ?? 0),
+      icono: 'checkmark-done-outline',
+      valor: String(estadisticas.resueltas),
       etiqueta: 'Resueltas',
     },
     {
       id: 'calificacion',
       icono: 'star',
-      valor: estadisticas?.calificacion != null ? estadisticas.calificacion.toFixed(1) : '—',
-      etiqueta: 'Calificación',
-    },
-    {
-      id: 'miembro',
-      icono: 'calendar-outline',
-      valor: estadisticas?.miembro_desde ? `Desde ${estadisticas.miembro_desde}` : '—',
-      etiqueta: 'Miembro',
+      valor: estadisticas.calificacion != null ? estadisticas.calificacion.toFixed(1) : '—',
+      etiqueta:
+        estadisticas.cantidad_calificaciones > 0
+          ? `Calificación (${estadisticas.cantidad_calificaciones})`
+          : 'Calificación',
     },
   ];
 
   return (
-    <View className="flex-row rounded-tarjeta border border-borde bg-superficie py-4">
+    <View testID="fila-estadisticas" className="flex-row rounded-tarjeta border border-borde bg-superficie py-4">
       {metricas.map((metrica, indice) => (
         <View key={metrica.id} className="flex-1 flex-row">
           {indice > 0 ? <View className="w-px self-stretch bg-borde" /> : null}
-          <View className="flex-1 items-center gap-1 px-1">
-            <Ionicons name={metrica.icono} size={19} color="#FFC107" />
-            <Text className="text-center text-sm font-extrabold text-texto" numberOfLines={1}>
+          <View testID={`estadistica-${metrica.id}`} className="flex-1 items-center gap-1 px-1">
+            <Ionicons name={metrica.icono} size={19} color={COLORES.acento} />
+            <Text className="text-center text-base font-extrabold text-texto" numberOfLines={1}>
               {metrica.valor}
             </Text>
-            <Text className="text-micro text-texto-tenue">{metrica.etiqueta}</Text>
+            <Text className="text-micro text-texto-tenue" numberOfLines={1}>
+              {metrica.etiqueta}
+            </Text>
           </View>
         </View>
       ))}

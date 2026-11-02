@@ -6,7 +6,15 @@ export {
 } from './auth';
 export { listarCategoriasAveria } from './categorias';
 export { listarConsejos, listarPromociones } from './contenido';
-export { listarMecanicos, listarMecanicosDestacados, obtenerMecanico, tieneUbicacion } from './mecanicos';
+export {
+  listarEspecialidades,
+  listarMecanicos,
+  listarTalleres,
+  listarTalleresDestacados,
+  obtenerMecanico,
+  obtenerFichaMecanico,
+  tieneUbicacion,
+} from './mecanicos';
 export {
   COMISION_PLATAFORMA,
   detalleEstadoPago,
@@ -14,6 +22,11 @@ export {
   netoMecanico,
   NOMBRE_MEDIO,
 } from './pagos';
+export {
+  listarNotificaciones,
+  marcarNotificacionesLeidas,
+  suscribirseANotificaciones,
+} from './notificaciones';
 export { distanciaEntre, obtenerRuta, type Ruta } from './rutas';
 export {
   cerrarSesion,
@@ -23,8 +36,11 @@ export {
   obtenerUsuarioId,
 } from './sesion';
 export {
+  calificarServicio,
   cambiarEstadoSolicitud,
   cancelarSolicitud,
+  marcarNoResuelta,
+  obtenerClienteSolicitud,
   crearSolicitud,
   esCancelable,
   esEstadoActivo,
@@ -43,7 +59,25 @@ export {
   suscribirseAUbicacionMecanico,
   type Posicion,
 } from './seguimiento-vivo';
-export { coordenadasComoTexto, obtenerDireccion, obtenerUbicacionActual } from './ubicacion';
+export {
+  actualizarMiTaller,
+  agregarFotoTaller,
+  eliminarFotoTaller,
+  listarFotosTaller,
+  listarMiembrosTaller,
+  listarResenasTaller,
+  obtenerMiTaller,
+  quitarMiembroTaller,
+  resenarTaller,
+  responderUnionTaller,
+  subirFotoTaller,
+} from './talleres';
+export {
+  coordenadasComoTexto,
+  obtenerDireccion,
+  obtenerPosicionAproximada,
+  obtenerUbicacionActual,
+} from './ubicacion';
 export {
   actualizarPerfil,
   actualizarFotoPerfil,
