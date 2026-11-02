@@ -10,6 +10,7 @@ import type {
   MedioPago,
   PagoServicio,
   Servicio,
+  TipoVehiculo,
   UbicacionServicio,
 } from '@/types';
 
@@ -22,6 +23,7 @@ export const FLUJO_ESTADOS: EstadoServicio[] = [
   'en_camino',
   'llegue',
   'trabajando',
+  'por_confirmar',
   'finalizado',
 ];
 
@@ -37,19 +39,32 @@ export function esCancelable(estado: EstadoServicio): boolean {
 }
 
 /**
- * Próximo estado que registra el mecánico asignado, o null si no hay.
- * La base agrupa pasos: aceptar deja la solicitud "en camino" y llegar la deja
- * "trabajando", así que el mecánico ve 3 botones: aceptar, llegué y finalizar.
- * `aceptado` y `llegue` quedan por si hay solicitudes viejas en esos estados.
+ * Próximo estado que registra el mecánico asignado, o null si no le toca a él.
+ * Aceptar deja la solicitud "en camino". Después marca "llegué", y en "llegue" espera:
+ * el trabajo empieza recién cuando el cliente confirma la llegada (`confirmarLlegada`).
+ * `aceptado` queda por si hay solicitudes viejas en ese estado.
  */
 export function siguienteEstadoMecanico(estado: EstadoServicio): EstadoServicio | null {
   const siguientes: Partial<Record<EstadoServicio, EstadoServicio>> = {
     aceptado: 'en_camino',
     en_camino: 'llegue',
-    llegue: 'trabajando',
-    trabajando: 'finalizado',
+    // El mecánico marca el trabajo terminado; el cliente confirma si quedó resuelto.
+    trabajando: 'por_confirmar',
   };
   return siguientes[estado] ?? null;
+}
+
+/**
+ * El cliente confirma que el mecánico está con él: recién ahí empieza el trabajo.
+ * Así el mecánico no puede avanzar (y cobrar) el servicio sin haber ido.
+ */
+export async function confirmarLlegada(id: string): Promise<void> {
+  return cambiarEstadoSolicitud(id, 'trabajando');
+}
+
+/** El cliente confirma que quedó resuelto: se finaliza y recién ahí se cobra. */
+export async function confirmarResolucion(id: string): Promise<void> {
+  return cambiarEstadoSolicitud(id, 'finalizado');
 }
 
 /** RF-PAY-003: situación del cobro que se muestra en el seguimiento y en las listas. */
@@ -60,7 +75,7 @@ export function estadoPago(servicio: Pick<Servicio, 'pago'>): EstadoPago {
 const COLUMNAS = `
   id, codigo, usuario_id, mecanico_id, categoria_id, descripcion,
   direccion, latitud, longitud, estado, eta_minutos, motivo_cancelacion, motivo_no_resuelta,
-  monto_final, medio_pago, creado_en, actualizado_en,
+  monto_final, medio_pago, tipo_vehiculo, vehiculo_modelo, creado_en, actualizado_en,
   categoria:categorias_averia ( nombre, icono ),
   calificacion:calificaciones ( puntaje, comentario, creado_en ),
   mecanico:mecanicos!solicitudes_mecanico_id_fkey ( id, nombre, telefono, taller:talleres!mecanicos_taller_id_fkey ( nombre ) ),
@@ -119,6 +134,8 @@ type FilaSolicitud = {
   motivo_no_resuelta: string | null;
   monto_final: number | string | null;
   medio_pago: MedioPago;
+  tipo_vehiculo: TipoVehiculo | null;
+  vehiculo_modelo: string | null;
   creado_en: string;
   actualizado_en: string;
   categoria: { nombre: string; icono: string | null } | null;
@@ -187,6 +204,8 @@ function aServicio(fila: FilaSolicitud): Servicio {
     categoria_nombre: fila.categoria?.nombre ?? 'Asistencia mecánica',
     categoria_icono: fila.categoria?.icono ?? null,
     descripcion: fila.descripcion,
+    tipo_vehiculo: fila.tipo_vehiculo,
+    vehiculo_modelo: fila.vehiculo_modelo,
     ubicacion: {
       latitud: fila.latitud ?? 0,
       longitud: fila.longitud ?? 0,
@@ -324,6 +343,8 @@ export async function crearSolicitud(datos: {
   descripcion: string;
   ubicacion: UbicacionServicio;
   medioPago: MedioPago;
+  /** Auto o moto y su modelo: el mecánico lo ve antes de aceptar. */
+  vehiculo: { tipo: TipoVehiculo; modelo: string };
   /** Pedida desde el modal de un taller o de un mecánico en ruta: solo ellos la ven. */
   destino?: { tipo: 'taller' | 'mecanico'; id: string } | null;
 }): Promise<{ id: string; codigo: string }> {
@@ -340,6 +361,8 @@ export async function crearSolicitud(datos: {
       latitud: datos.ubicacion.latitud,
       longitud: datos.ubicacion.longitud,
       medio_pago: datos.medioPago,
+      tipo_vehiculo: datos.vehiculo.tipo,
+      vehiculo_modelo: datos.vehiculo.modelo.trim() || null,
       taller_solicitado_id: datos.destino?.tipo === 'taller' ? datos.destino.id : null,
       mecanico_solicitado_id: datos.destino?.tipo === 'mecanico' ? datos.destino.id : null,
     })

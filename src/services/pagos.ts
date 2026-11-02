@@ -27,7 +27,7 @@ export const ETIQUETA_ESTADO_PAGO: Record<EstadoPago, string> = {
 export function detalleEstadoPago(estado: EstadoPago): string {
   switch (estado) {
     case 'retenido':
-      return 'El monto quedó retenido en Mercado Pago. Se cobra cuando el mecánico finalice; si se cancela, se devuelve.';
+      return 'El monto quedó retenido en Mercado Pago. Se cobra cuando confirmes que quedó resuelto; si se cancela o no se resuelve, se devuelve.';
     case 'pendiente':
       return 'Pagás en efectivo al mecánico cuando termine el trabajo.';
     case 'cobrado':
