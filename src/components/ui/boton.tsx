@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
+import { COLORES } from '@/lib/tema';
 
 type Variante = 'primario' | 'secundario' | 'fantasma' | 'peligro';
 
@@ -34,10 +35,10 @@ const TEXTO: Record<Variante, string> = {
 };
 
 const ICONO: Record<Variante, string> = {
-  primario: '#0B0B0D',
-  secundario: '#FFFFFF',
-  fantasma: '#FFC107',
-  peligro: '#EF4444',
+  primario: COLORES.textoInverso,
+  secundario: COLORES.texto,
+  fantasma: COLORES.acento,
+  peligro: COLORES.peligro,
 };
 
 /** Botón del sistema de diseño. Siempre responde visualmente al toque (RNF-UX-004) y cumple con accesibilidad (RF-UX-007). */

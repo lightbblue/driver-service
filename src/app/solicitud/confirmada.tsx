@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { Boton, Pantalla } from '@/components/ui';
+import { COLORES } from '@/lib/tema';
 
 /** Cierre del flujo de solicitud (RF-VIEW-006, paso 4): la solicitud ya está guardada. */
 export default function SolicitudConfirmadaScreen() {
@@ -13,7 +14,7 @@ export default function SolicitudConfirmadaScreen() {
     <Pantalla bordes={['top', 'bottom']}>
       <View className="flex-1 items-center justify-center gap-4 px-8">
         <View className="h-24 w-24 items-center justify-center rounded-full bg-acento/15">
-          <Ionicons name="checkmark-circle" size={62} color="#FFC107" />
+          <Ionicons name="checkmark-circle" size={62} color={COLORES.acento} />
         </View>
 
         <Text className="text-center text-2xl font-extrabold text-texto">

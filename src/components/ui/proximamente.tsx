@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 
 import { LogoRider } from './logo-rider';
 import { Pantalla } from './pantalla';
+import { COLORES } from '@/lib/tema';
 
 type ProximamenteProps = {
   titulo: string;
@@ -23,7 +24,7 @@ export function Proximamente({ titulo, requisito, detalle }: ProximamenteProps) 
 
       <View className="flex-1 items-center justify-center gap-3 px-8">
         <View className="h-20 w-20 items-center justify-center rounded-full bg-superficie">
-          <Ionicons name="construct-outline" size={34} color="#FFC107" />
+          <Ionicons name="construct-outline" size={34} color={COLORES.acento} />
         </View>
         <Text className="text-center text-xl font-bold text-texto">{titulo}</Text>
         <Text className="text-center text-sm text-texto-tenue">{detalle}</Text>

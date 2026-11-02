@@ -23,7 +23,7 @@ export function TarjetaSolicitud({ servicio, onPress }: { servicio: Servicio; on
       className="gap-3 rounded-tarjeta border border-borde bg-superficie p-4 active:bg-superficie-alta">
       <View className="flex-row items-start gap-3">
         <View className="h-10 w-10 items-center justify-center rounded-full bg-superficie-alta">
-          <Ionicons name={iconoDeCategoria(servicio.categoria_icono ?? '')} size={20} color="#FFC107" />
+          <Ionicons name={iconoDeCategoria(servicio.categoria_icono ?? '')} size={20} color={COLORES.acento} />
         </View>
         <View className="flex-1 gap-1">
           <Text className="text-base font-bold text-texto">{servicio.categoria_nombre}</Text>
@@ -31,7 +31,7 @@ export function TarjetaSolicitud({ servicio, onPress }: { servicio: Servicio; on
             {servicio.codigo} · {formatearFechaHora(servicio.creado_en)}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color="#6B7280" />
+        <Ionicons name="chevron-forward" size={18} color={COLORES.textoSutil} />
       </View>
 
       {/* En la bandeja del mecánico: quién la pidió */}
@@ -69,7 +69,7 @@ export function TarjetaSolicitud({ servicio, onPress }: { servicio: Servicio; on
       ) : null}
 
       <View className="flex-row items-center gap-1.5">
-        <Ionicons name="location-outline" size={14} color="#9CA3AF" />
+        <Ionicons name="location-outline" size={14} color={COLORES.textoTenue} />
         <Text className="flex-1 text-chico text-texto-tenue" numberOfLines={1}>
           {servicio.ubicacion.direccion}
         </Text>

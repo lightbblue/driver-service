@@ -1,51 +1,54 @@
 # Rider Service — *Nunca viajes solo*
 
-Aplicación móvil de asistencia al motociclista: conecta en tiempo real a quien necesita ayuda en la ruta con el mecánico que puede prestarla.
+Sistema integral de asistencia mecánica para **autos y motos**: conecta en tiempo real al conductor que necesita ayuda con un mecánico o un taller cercano, y centraliza el pedido, la asignación, el seguimiento, el cobro y la calificación del servicio.
 
-**Materia:** Aplicaciones Móviles · **Entrega 1 — MVP de interfaz**
+**Materia:** Aplicaciones Móviles · **Entrega final**
 
----
-
-## ⚠️ Alcance de esta entrega
-
-> **Esta entrega comprende pantallas, no funcionalidad.**
-
-La Entrega 1 es un **MVP de interfaz**: un conjunto de pantallas terminadas y navegables cuyo contenido proviene de archivos JSON locales. Es una decisión documentada, no una omisión.
-
-Si abrís la app y esperás que el login autentique, **no lo hace**. Tampoco valida formularios, ni guarda datos, ni registra solicitudes. Nada de eso está implementado todavía.
-
-| Sí está implementado | No está implementado (y por qué) |
-|---|---|
-| Las pantallas completas, fieles a la maqueta | Autenticación y registro real — exige el backend operativo |
-| Navegación entre todas las pantallas | Validación de formularios — es lógica, va junto con la autenticación |
-| Contenido leído desde JSON vía capa de servicios | Persistencia y estado global — sin operaciones que persistir, no tiene sentido |
-| Estado visual de los controles (selección, foco, pestaña activa) | Reglas de negocio, cálculos y decisiones del sistema |
-| Avance y retroceso entre los pasos del flujo | Bloqueo del avance según lo ingresado |
-| Estados de carga y de lista vacía | Manejo de errores de red o de operación |
-
-El razonamiento: **autenticar exige que Supabase esté operativo**. Construir un simulacro de login ahora es escribir código que se descarta apenas llegue el backend. En esta etapa se invierte donde el trabajo se conserva — el sistema de diseño, la estructura de navegación y las pantallas.
-
-El detalle completo está en `01-Rider-Service-Requerimientos-MoSCoW.md`, sección 1.3.
+La especificación completa está en [`docs/Rider-Service-SRS.pdf`](docs/Rider-Service-SRS.pdf). Los planes y casos de prueba están en la misma carpeta.
 
 ---
 
-## Pantallas
+## Modelo de negocio
 
-### Comprometidas — MUST
+Cualquier conductor de un auto o una moto que tiene un problema en la calle o en la ruta (sin nafta, con una pinchadura, sin batería o con una falla) puede pedir ayuda, indicando su vehículo y modelo para que el mecánico sepa a qué va antes de aceptar.
 
-| # | Pantalla | Ruta | Requisito |
-|---|---|---|---|
-| 1 | Iniciar sesión | `/login` | `RF-VIEW-002` |
-| 2 | Registro (Usuario / Mecánico) | `/register` | `RF-VIEW-003` |
-| 3 | Inicio | `/inicio` | `RF-VIEW-004` |
-| 4 | Perfil | `/perfil` | `RF-VIEW-005` |
-| 5 | Solicitar asistencia (4 pasos) | `/solicitud/nueva` | `RF-VIEW-006` |
+- **Clientes:** conductores de autos y motos. Ven el precio fijo antes de pedir y pagan solo cuando confirman que el problema quedó resuelto.
+- **Mecánicos y talleres:** mecánicos independientes que trabajan en ruta y talleres (de autos, motos o ambos) con uno o más mecánicos. Cada taller declara sus especialidades, entre ellas **Autos** y **Motos**, y el cliente puede filtrarlos en el mapa.
+- **Plataforma:** cobra una **comisión del 10 %** de cada servicio cobrado; el mecánico recibe el 90 %. Si el servicio se cancela o no se resuelve, el pago se devuelve y no hay comisión.
 
-Más la estructura de navegación (`RF-VIEW-011`) y la capa de datos (`RF-VIEW-012`).
+---
 
-### Fuera del alcance comprometido — SHOULD
+## Integrantes
 
-`Mecánicos cerca tuyo` (`/mapa`) y `Mis solicitudes` (`/solicitudes`) muestran una pantalla de *Próximamente* que declara su requisito. Es lo que pide `RF-VIEW-011`: una pestaña sin pantalla nunca debe provocar un error.
+- Joaquín Stachioni
+- Agustín Galeano
+- Agustín Russo
+- Víctor Aguilera
+- Leo Franco
+- Thiago Ferreyra
+- Donato Díaz Cardozo
+- Casandra Godoy
+- Amir Gramajo
+- Lucas González
+
+---
+
+## Qué hace la app
+
+**Cliente**
+- Pide asistencia en 4 pasos: problema, ubicación con GPS, vehículo (auto o moto y modelo) y confirmación con el precio fijo y el medio de pago.
+- Puede pedirla con el botón **SOS** (la toma cualquier mecánico disponible) o a un **taller en particular** desde el mapa.
+- Sigue al mecánico en vivo en el mapa, con la ruta por las calles y el tiempo estimado de llegada.
+- **Confirma la llegada** del mecánico para que empiece el trabajo, y **confirma que quedó resuelto** para que se cobre. Si no quedó resuelto, se le devuelve el pago.
+- Califica al mecánico y deja reseñas a los talleres.
+
+**Mecánico**
+- Ve las solicitudes disponibles (primero las pedidas a su taller), con el precio, su neto, el vehículo y el recorrido hasta el cliente.
+- Acepta, sale en camino, marca la llegada y el trabajo terminado.
+- Al registrarse crea su taller (y queda como dueño), se suma a uno existente (el dueño lo acepta) o trabaja en ruta.
+- El dueño administra su taller desde **Mi taller**: datos, ubicación, fotos, especialidades y miembros.
+
+**Para los dos:** notificaciones dentro de la app, perfil con foto y cobro simulado con Mercado Pago (retenido hasta que se confirma) o en efectivo.
 
 ---
 
@@ -53,11 +56,12 @@ Más la estructura de navegación (`RF-VIEW-011`) y la capa de datos (`RF-VIEW-0
 
 | Capa | Tecnología |
 |---|---|
-| Framework | React Native + Expo (Expo Router) |
-| Estilos | NativeWind (Tailwind CSS para React Native) |
+| Framework | React Native + Expo SDK 58 (Expo Router) |
+| Estilos | NativeWind (Tailwind CSS) con tema centralizado |
 | Lenguaje | TypeScript en modo estricto |
-| Datos (Entrega 1) | Archivos JSON locales |
-| Backend (Entrega 2) | Supabase — Auth, PostgreSQL, Realtime, Storage |
+| Backend | Supabase: Auth (correo y Google), PostgreSQL con RLS, Realtime y Storage |
+| Lógica del servidor | Funciones y triggers en PL/pgSQL (estados, precio, cobro, permisos) |
+| Mapas | Leaflet (WebView en el celular, librería en la web) con teselas de CARTO; rutas con OSRM |
 
 ---
 
@@ -71,63 +75,42 @@ cp .env.example .env   # en Windows (PowerShell): Copy-Item .env.example .env
 npx expo start -c
 ```
 
-El archivo `.env` trae la URL del proyecto de Supabase y su clave **publicable**, pensada para viajar dentro de la app. Los datos los protegen las políticas RLS de la base. Si cambian las variables, hay que reiniciar Expo con `-c` para que las tome.
+Después, desde la terminal de Expo: `a` abre Android, `w` abre la web, o se escanea el QR con **Expo Go**.
 
-Después, desde la terminal de Expo:
+### Variables de entorno (`.env`)
 
-- `a` — abrir en emulador o dispositivo Android
-- `i` — abrir en simulador de iOS
-- o escanear el QR con **Expo Go**
+| Variable | Para qué |
+|---|---|
+| `EXPO_PUBLIC_SUPABASE_URL` | URL del proyecto de Supabase |
+| `EXPO_PUBLIC_SUPABASE_KEY` | Clave **publicable** de Supabase (viaja en la app; los datos los protege RLS) |
+| `EXPO_PUBLIC_CARTO_KEY` | Opcional. Clave gratis de CARTO para el mapa Voyager; sin clave se usa el mapa de Esri |
 
-Verificado en Android 10+ (`RNF-COMP-001`).
+Si cambia alguna variable, hay que reiniciar Expo con `-c`.
+
+### Iniciar sesión con Google en el celular
+
+En Expo Go, Google solo vuelve a la app si Expo se levanta **con túnel**, porque Supabase no acepta direcciones de vuelta con IP:
+
+```bash
+npx expo start --tunnel ngrok -c
+```
+
+Si `ngrok` da error la primera vez: `npm install --no-save @expo/ngrok@^4.1.0`. La app de Google está en modo Prueba: solo pueden entrar las cuentas cargadas como usuarios de prueba.
 
 ---
 
-## Supabase
+## Base de datos
 
-La app lee las credenciales de `.env` (no versionado):
+Todo el esquema está versionado en [`supabase/migrations/`](supabase/migrations/). Para levantar una base nueva, se ejecutan los archivos **en orden** en el SQL Editor de Supabase. Después se puede comprobar con:
 
-```
-EXPO_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co
-EXPO_PUBLIC_SUPABASE_KEY=<publishable / anon key>
-```
-
-### Puesta en marcha de la base
-
-Las migraciones se ajustan a las tablas que ya existen en Supabase (`solicitudes`, `historial_solicitudes`, `mecanicos`, `categorias_averia`, `perfiles`): solo agregan columnas, funciones y políticas, sin renombrar ni borrar nada.
-
-| Migración | Contenido | Requisitos |
-|---|---|---|
-| `…_solicitudes_estructura.sql` | Código `RS-AAAA-NNNN`, tiempo estimado, motivo de cancelación, estado anterior y actor en el historial, vínculo taller ↔ usuario | RF-ASSIST-005, RF-DATA-004 |
-| `…_solicitudes_estados.sql` | Máquina de estados, aceptación atómica, una solicitud activa por cliente, bitácora automática | RF-STATE-001..005, RF-MATCH-003/004, RN-002..005, RN-009, RN-010 |
-| `…_solicitudes_rls.sql` | Políticas RLS, privilegios y Realtime | RF-SEC-001, RN-001, RN-008 |
-
-1. Ejecutar en el **SQL Editor** cada archivo de `supabase/migrations/`, en orden. Son idempotentes.
-2. Comprobar el resultado con `npm run verificar:supabase` (solo lecturas).
-3. `supabase/verificacion.sql` lista columnas, restricciones, políticas RLS y triggers, para revisar el esquema desde el SQL Editor.
-
-### Seguimiento del servicio
-
-Los estados son `pendiente → aceptado → en_camino → llegue → trabajando → finalizado`, más `cancelada` hasta antes de iniciar el trabajo (RN-009). `pendiente` es el estado inicial que la base ya usaba ("Solicitado" en el SRS). Todo cambio pasa por `cambiar_estado_solicitud()`; un trigger valida la transición (RN-004) y registra en `historial_solicitudes` el estado anterior, el actor, la fecha y la `nota`. La app no puede modificar `solicitudes` directamente: los privilegios y la RLS lo impiden.
-
-Una cuenta es de mecánico cuando está vinculada a un taller de `mecanicos`:
-
-```sql
-update public.mecanicos
-set usuario_id = (select id from auth.users where email = 'mecanico@ejemplo.com'),
-    disponible = true
-where id = '<id del taller>';
+```bash
+npm run verificar:supabase
 ```
 
-Solo los mecánicos con `disponible = true` ven las solicitudes pendientes y pueden aceptarlas (RN-003).
-
-### Ubicación
-
-Al llegar al paso 2 de la solicitud se pide el permiso de ubicación, explicando para qué se usa (RNF-PRIV-002), y el mapa se centra en la posición GPS. El pin se puede arrastrar (o tocar el mapa) para corregir el punto, y la dirección se recalcula y se puede editar. Se guardan las coordenadas del pin. Sin permiso, la ubicación se marca a mano en el mapa.
-
-- **Web:** Leaflet. La geolocalización del navegador exige `https` o `localhost`.
-- **Android / iOS:** Leaflet dentro de un WebView. Funciona en Expo Go y no necesita clave de Google Maps.
-- Mapa: teselas de CARTO sobre datos de OpenStreetMap. Direcciones: geocodificador del sistema en el celular y Nominatim (OSM) en la web.
+Puntos clave:
+- **RLS en todas las tablas.** Un cliente solo ve sus solicitudes; un mecánico, las que tiene asignadas o puede tomar.
+- **La app no puede fijar montos ni saltear estados.** El precio, la comisión (10 %), el cobro y cada cambio de estado los valida la base.
+- **Flujo del servicio:** `pendiente → en camino → llegó → trabajando → esperando confirmación → finalizado`, con `cancelada` (antes de empezar) y `no resuelta` (se devuelve el pago). El cliente es quien confirma la llegada y la resolución.
 
 ---
 
@@ -135,78 +118,49 @@ Al llegar al paso 2 de la solicitud se pide el permiso de ubicación, explicando
 
 ```
 src/
-├── app/                    Rutas (Expo Router) — solo vistas
-│   ├── _layout.tsx         Stack raíz
-│   ├── index.tsx           Entrada → redirige a /login
-│   ├── (auth)/             login · register
-│   ├── (tabs)/             inicio · mapa · solicitudes · perfil
-│   └── solicitud/          nueva · confirmada
-├── components/
-│   ├── ui/                 Sistema de diseño (Boton, CampoTexto, Tarjeta…)
-│   ├── navegacion/         Barra inferior con el botón SOS
-│   ├── home/  perfil/  solicitud/   Componentes por pantalla
-├── services/               ÚNICO acceso a datos — funciones asíncronas
-├── data/                   Archivos JSON
-├── types/                  Interfaces del dominio
-├── hooks/                  use-recurso (puente vistas ↔ servicios)
-└── lib/                    Utilidades (formato, íconos, clases)
+├── app/            Rutas (Expo Router): auth, pestañas, solicitud, mi-taller, editar-perfil
+├── components/     ui (sistema de diseño), mapa, seguimiento, taller, home, perfil, registro…
+├── services/       ÚNICO acceso a datos (Supabase y JSON)
+├── types/          Tipos del dominio
+├── hooks/          use-recurso y sesión
+├── lib/            Tema, formato, íconos y utilidades
+└── data/           Contenido editorial en JSON (consejos y promociones)
+supabase/migrations/  Esquema, funciones, triggers, RLS y datos de prueba
+docs/                 SRS, plan de testing, casos de test y status del proyecto
 ```
 
-### Dos reglas que sostienen el proyecto
-
-**1 · Ningún componente importa un JSON.** Todo pasa por `/services`, que expone funciones asíncronas. En la Entrega 2 se reimplementa `/services` con el cliente de Supabase y **no se toca ninguna vista** (`RNF-SCAL-001`). Es la razón por la que entregar solo pantallas no es tiempo perdido.
-
-**2 · Ningún componente escribe un color o una medida a mano.** Todo sale del tema centralizado en `tailwind.config.js` mediante clases de NativeWind (`RNF-UX-001`).
-
-Los tipos de `/types` espejan las tablas del modelo de datos (`03-Rider-Service-Modelo-de-Datos.md`), para que la migración no obligue a reescribir componentes.
+Dos reglas del proyecto:
+1. **Ninguna vista accede a los datos directamente:** todo pasa por `/services`.
+2. **Ningún componente escribe colores a mano:** salen del tema (`tailwind.config.js` y `src/lib/tema.ts`).
 
 ---
 
-## Recorridos de verificación
+## Calidad
 
-Al no haber funcionalidad, lo que se verifica son recorridos de navegación:
-
-1. **Ingreso** — `Login → (botón principal) → Inicio`
-2. **Registro** — `Login → Registrate → Usuario → conmutador → Mecánico → Inicio`
-3. **Solicitud** — `Inicio → Solicitar asistencia → Paso 1 → 2 → 3 → 4 → Confirmar`
-4. **Navegación** — `Inicio → Perfil → Inicio → SOS → Solicitar asistencia`
-
----
-
-## Convención de commits
-
-Cada commit referencia el ID del requisito que implementa (`RNF-TRACE-002`):
-
-```
-feat(RF-VIEW-004): pantalla de Inicio con contenido desde la capa de servicios
+```bash
+npx tsc --noEmit   # tipos
+npm run lint       # ESLint
 ```
 
-Relación esperada: `Requisito → Criterio de aceptación → Tarea → Commit → Evidencia`.
-
-Toda pantalla se integra por Pull Request con revisión de otro integrante. No se admiten *pushes* directos a `main` (`RNF-MAIN-002`).
+Cada commit referencia el requisito que implementa (por ejemplo `feat(RF-VIEW-004): …`) y todo entra a `main` por Pull Request.
 
 ---
 
 ## Datos de prueba
 
-Los JSON de `src/data/` incluyen casos límite deliberados (`RNF-TEST-002`): taller con nombre muy largo, logo nulo, mecánico sin calificaciones, mecánico no disponible, usuario sin localidad, consejo sin imagen y solicitud cancelada. Sirven para verificar que la interfaz no se rompe.
+- 10 talleres reales de Pilar y Tortuguitas (datos públicos), cargados como talleres **no adheridos**: aparecen en el mapa y se los puede llamar.
+- "Taller Demo", con su dueño, para probar el circuito completo de solicitud, confirmación, cobro y calificación.
 
-**No contienen datos personales reales** de los integrantes ni de terceros (`RNF-PRIV-001`): los correos usan el dominio `@riderservice.test` y los teléfonos son marcadores.
-
-Ninguna credencial está versionada: `.env` figura en `.gitignore` (`RNF-SEC-001`).
+Ninguna credencial privada está versionada: `.env` está en `.gitignore`, y las claves privadas (service role de Supabase, secreto de Google) nunca entran al repositorio.
 
 ---
 
 ## Uso de inteligencia artificial
 
-El equipo utilizó asistencia de IA para la implementación de pantallas y la documentación. Todo el código generado fue revisado, comprendido y validado por un integrante antes de incorporarse: nadie integra código que no pueda explicar (`RNF-AI-002`). No se introdujeron credenciales ni información personal sensible en herramientas externas (`RNF-AI-003`).
+El equipo usó **Claude** (Anthropic), mediante Claude Code, como asistente de desarrollo:
 
----
+- generar y revisar código de pantallas, servicios y migraciones de la base;
+- diagnosticar errores (por ejemplo, del inicio de sesión con Google o del mapa);
+- redactar y actualizar la documentación (SRS y este README).
 
-## Integrantes
-
-<!-- Completar con nombre y rol de cada integrante -->
-
-| Integrante | Rol |
-|---|---|
-| | |
+Todo lo generado fue revisado, probado en la app y validado por un integrante antes de incorporarse: nadie integra código que no pueda explicar. Las migraciones de la base las ejecutó el equipo a mano. No se compartieron con la herramienta claves privadas ni datos personales de terceros.

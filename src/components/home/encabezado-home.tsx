@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 import { CampanaNotificaciones } from '@/components/notificaciones/campana-notificaciones';
 import { Avatar, LogoRider } from '@/components/ui';
 import type { Perfil } from '@/types';
+import { COLORES } from '@/lib/tema';
 
 type EncabezadoHomeProps = {
   usuario: Perfil | null;
@@ -42,7 +43,7 @@ export function EncabezadoHome({ usuario, onPressPerfil }: EncabezadoHomeProps) 
               {ROLES[usuario?.rol ?? 'cliente'] ?? 'Usuario'}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={13} color="#9CA3AF" />
+          <Ionicons name="chevron-forward" size={13} color={COLORES.textoTenue} />
         </Pressable>
       </View>
     </View>
