@@ -18,13 +18,14 @@ export function LineaTiempo({ servicio }: { servicio: Servicio }) {
   const ultimo = (estado: EstadoServicio) =>
     [...servicio.historial].reverse().find((h) => h.estado_nuevo === estado) ?? null;
 
-  const filas: Fila[] =
-    servicio.estado === 'cancelada'
-      ? [
-          ...FLUJO_ESTADOS.map((estado) => ({ estado, hito: ultimo(estado) })).filter((f) => f.hito || f.estado === 'pendiente'),
-          { estado: 'cancelada', hito: ultimo('cancelada') },
-        ]
-      : FLUJO_ESTADOS.map((estado) => ({ estado, hito: ultimo(estado) }));
+  // Cancelada o no resuelta: la lista termina en ese cierre, sin las etapas que no ocurrieron.
+  const cierre = servicio.estado === 'cancelada' || servicio.estado === 'no_resuelta' ? servicio.estado : null;
+  const filas: Fila[] = cierre
+    ? [
+        ...FLUJO_ESTADOS.map((estado) => ({ estado, hito: ultimo(estado) })).filter((f) => f.hito || f.estado === 'pendiente'),
+        { estado: cierre, hito: ultimo(cierre) },
+      ]
+    : FLUJO_ESTADOS.map((estado) => ({ estado, hito: ultimo(estado) }));
 
   return (
     <View testID="linea-tiempo">
