@@ -7,14 +7,17 @@ export {
 export { listarCategoriasAveria } from './categorias';
 export { listarConsejos, listarPromociones } from './contenido';
 export {
+  cambiarDisponibilidad,
   listarEspecialidades,
   listarMecanicos,
   listarTalleres,
   listarTalleresDestacados,
+  obtenerDisponibilidad,
   obtenerMecanico,
   obtenerFichaMecanico,
   tieneUbicacion,
 } from './mecanicos';
+export { obtenerGanancias, type GananciaServicio, type ResumenGanancias } from './ganancias';
 export {
   COMISION_PLATAFORMA,
   detalleEstadoPago,
@@ -41,6 +44,10 @@ export {
   cancelarSolicitud,
   confirmarLlegada,
   confirmarResolucion,
+  aceptarPresupuesto,
+  proponerPrecio,
+  rechazarPresupuesto,
+  obtenerRechazoPropio,
   marcarNoResuelta,
   obtenerClienteSolicitud,
   crearSolicitud,

@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { AceptarPrecio } from '@/components/seguimiento/aceptar-precio';
 import { CalificarServicio } from '@/components/seguimiento/calificar-servicio';
 import { DistintivoEstado } from '@/components/seguimiento/distintivo-estado';
 import { LineaTiempo } from '@/components/seguimiento/linea-tiempo';
@@ -31,7 +32,7 @@ import {
   Tarjeta,
 } from '@/components/ui';
 import { useRecurso } from '@/hooks/use-recurso';
-import { formatearMoneda } from '@/lib/formato';
+import { formatearFechaHora, formatearMoneda } from '@/lib/formato';
 import { COLORES } from '@/lib/tema';
 import { iconoVehiculo, textoVehiculo } from '@/lib/vehiculo';
 import {
@@ -41,14 +42,16 @@ import {
   confirmarResolucion,
   esCancelable,
   marcarNoResuelta,
+  proponerPrecio,
   netoMecanico,
-  NOMBRE_MEDIO,
   obtenerMecanicoIdActual,
   obtenerClienteSolicitud,
   obtenerFichaMecanico,
+  obtenerRechazoPropio,
   obtenerSolicitud,
   obtenerUsuarioId,
   siguienteEstadoMecanico,
+  suscribirseANotificaciones,
   suscribirseASolicitudes,
 } from '@/services';
 import type { ClienteSolicitud, EstadoServicio, Servicio } from '@/types';
@@ -59,7 +62,7 @@ import type { ClienteSolicitud, EstadoServicio, Servicio } from '@/types';
  * terminar se cobra recién cuando el cliente confirma que quedó resuelto.
  */
 const ACCION_MECANICO: Partial<Record<EstadoServicio, string>> = {
-  aceptado: 'Aceptar y salir en camino',
+  aceptado: 'Enviar precio y tomar la solicitud',
   en_camino: 'Salir en camino',
   llegue: 'Llegué al lugar',
   trabajando: 'Iniciar trabajo',
@@ -104,6 +107,8 @@ type Detalle = {
   puntajeMecanico: { promedio: number | null; cantidad: number; fotoUrl: string | null } | null;
   /** Para el mecánico: quién pidió la solicitud. */
   cliente: ClienteSolicitud | null;
+  /** Para el mecánico: el cliente rechazó su precio (y la solicitud ya no es suya). */
+  rechazo: { monto: number | null; motivo: string; fecha: string } | null;
 };
 
 async function cargarDetalle(id: string): Promise<Detalle> {
@@ -119,7 +124,13 @@ async function cargarDetalle(id: string): Promise<Detalle> {
     // Y el mecánico, los datos de quien la pidió.
     !esCliente && servicio && mecanicoId ? obtenerClienteSolicitud(servicio.id) : null,
   ]);
-  return { servicio, usuarioId, mecanicoId, puntajeMecanico, cliente };
+  // Si el cliente le rechazó el precio, la solicitud ya no es del mecánico (o se canceló):
+  // se le muestra el rechazo con su motivo.
+  const rechazo =
+    mecanicoId && !esCliente && (!servicio || servicio.mecanico_id !== mecanicoId || servicio.estado === 'cancelada')
+      ? await obtenerRechazoPropio(id)
+      : null;
+  return { servicio, usuarioId, mecanicoId, puntajeMecanico, cliente, rechazo };
 }
 
 /** Seguimiento de una solicitud: estado en vivo, historial y acciones (REQ-05). */
@@ -133,8 +144,35 @@ export default function SeguimientoScreen() {
   // Cambios en vivo: el cliente ve cuándo el mecánico acepta, sale y llega.
   useEffect(() => suscribirseASolicitudes(recargar, id), [id, recargar]);
 
+  // El mecánico deja de recibir los cambios de la solicitud cuando el cliente rechaza su precio
+  // (ya no es suya): el aviso que le llega dispara la recarga.
+  const usuarioActual = detalle.datos?.usuarioId ?? null;
+  useEffect(() => {
+    if (!usuarioActual) return;
+    return suscribirseANotificaciones(usuarioActual, recargar);
+  }, [usuarioActual, recargar]);
+
+  const rechazo = detalle.datos?.rechazo ?? null;
+  const tarjetaRechazo = rechazo ? (
+    <Tarjeta testID="tarjeta-precio-rechazado" className="gap-2 border-peligro/40 p-4">
+      <View className="flex-row items-center gap-2">
+        <Ionicons name="close-circle" size={20} color={COLORES.peligro} />
+        <Text className="flex-1 text-base font-extrabold text-texto">El cliente rechazó tu precio</Text>
+      </View>
+      {rechazo.monto != null ? (
+        <Text className="text-chico text-texto-tenue">Precio enviado: {formatearMoneda(rechazo.monto)}</Text>
+      ) : null}
+      <Text className="text-sm text-texto">Motivo: “{rechazo.motivo}”</Text>
+      <Text className="text-mini text-texto-tenue">
+        Ya no podés tomar esta solicitud. {formatearFechaHora(rechazo.fecha)}
+      </Text>
+    </Tarjeta>
+  ) : null;
+
   const [observacion, setObservacion] = useState('');
   const [eta, setEta] = useState<number | null>(null);
+  // Precio que el mecánico le propone al cliente al tomar la solicitud.
+  const [precio, setPrecio] = useState('');
   const [cancelando, setCancelando] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [sinResolver, setSinResolver] = useState(false);
@@ -180,13 +218,31 @@ export default function SeguimientoScreen() {
     }
   };
 
+  const precioNumero = Number(precio.replace(/\./g, '').replace(',', '.'));
+  const precioValido = Number.isFinite(precioNumero) && precioNumero > 0;
+
   const avanzarEstado = () => {
     if (!servicio || !proximo) return;
+    if (proximo === 'aceptado') {
+      if (!precioValido) {
+        Alert.alert('Falta el precio', 'Indicá cuánto vas a cobrar por el servicio.');
+        return;
+      }
+      void ejecutar(
+        () => proponerPrecio(servicio.id, precioNumero, eta, observacion),
+        () => {
+          setObservacion('');
+          setEta(null);
+          setPrecio('');
+        },
+      );
+      return;
+    }
     void ejecutar(
       () =>
         cambiarEstadoSolicitud(servicio.id, proximo, {
           observacion,
-          etaMinutos: proximo === 'aceptado' || proximo === 'en_camino' ? eta : null,
+          etaMinutos: null,
         }),
       () => {
         setObservacion('');
@@ -267,6 +323,16 @@ export default function SeguimientoScreen() {
             icono="cloud-offline-outline"
             onReintentar={recargar}
           />
+        ) : (!servicio || (rechazo && servicio.mecanico_id !== detalle.datos?.mecanicoId)) && rechazo ? (
+          <View className="gap-4 px-4 pt-2">
+            {tarjetaRechazo}
+            <Boton
+              titulo="Ver solicitudes disponibles"
+              variante="secundario"
+              icono="list-outline"
+              onPress={() => router.replace('/solicitudes')}
+            />
+          </View>
         ) : !servicio ? (
           <ListaVacia
             titulo="Solicitud no encontrada"
@@ -478,6 +544,20 @@ export default function SeguimientoScreen() {
               </Tarjeta>
             ) : null}
 
+            {servicio.estado === 'aceptado' && esCliente ? (
+              <AceptarPrecio servicio={servicio} onRespondido={recargar} />
+            ) : null}
+
+            {servicio.estado === 'aceptado' && esAsignado ? (
+              <Tarjeta testID="esperando-precio" className="flex-row items-start gap-3 border-acento/40 p-4">
+                <Ionicons name="hourglass-outline" size={20} color={COLORES.acento} />
+                <Text className="flex-1 text-chico text-texto">
+                  Le enviaste un precio de {formatearMoneda(servicio.monto_final)}. Cuando el cliente lo acepte, vas a
+                  poder salir hacia su ubicación.
+                </Text>
+              </Tarjeta>
+            ) : null}
+
             {/* Mapa integrado: ubicación del cliente y, en curso, el mecánico en vivo (RF-GPS-001..005) */}
             {servicio.estado !== 'cancelada' &&
             servicio.estado !== 'finalizado' &&
@@ -538,15 +618,23 @@ export default function SeguimientoScreen() {
                   </View>
                 ) : null}
 
-                {/* Antes de aceptar: cuánto paga el cliente y cuánto recibe el mecánico */}
-                {proximo === 'aceptado' && servicio.monto_final != null ? (
-                  <View testID="precio-disponible" className="gap-0.5 rounded-campo bg-superficie-alta p-3">
-                    <Text className="text-sm font-bold text-texto">
-                      El cliente paga {formatearMoneda(servicio.monto_final)}
-                    </Text>
-                    <Text className="text-mini text-texto-tenue">
-                      Vos recibís {formatearMoneda(netoMecanico(servicio.monto_final))} (90 %) ·{' '}
-                      {NOMBRE_MEDIO[servicio.medio_pago]}
+                {/* Antes de tomarla, el mecánico le pone precio: el cliente lo acepta antes de que salga */}
+                {proximo === 'aceptado' ? (
+                  <View className="gap-2">
+                    <CampoTexto
+                      testID="campo-precio"
+                      etiqueta="Precio del servicio"
+                      icono="pricetag-outline"
+                      placeholder="Ej: 18000"
+                      keyboardType="numeric"
+                      value={precio}
+                      onChangeText={(texto) => setPrecio(texto.replace(/[^0-9.,]/g, ''))}
+                      maxLength={10}
+                    />
+                    <Text testID="precio-neto" className="text-mini text-texto-tenue">
+                      {precioValido
+                        ? `Vos recibís ${formatearMoneda(netoMecanico(precioNumero))} (90 %). La plataforma cobra el 10 %.`
+                        : 'El cliente lo ve y lo tiene que aceptar antes de que salgas.'}
                     </Text>
                   </View>
                 ) : null}

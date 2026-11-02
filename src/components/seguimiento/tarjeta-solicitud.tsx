@@ -94,6 +94,12 @@ export function TarjetaSolicitud({ servicio, onPress }: { servicio: Servicio; on
               {ETIQUETA_ESTADO_PAGO[servicio.pago.estado]}
             </Text>
           </View>
+        ) : servicio.estado === 'aceptado' && servicio.monto_final != null ? (
+          // El mecánico ya puso precio; el cliente todavía no lo aceptó.
+          <View testID={`precio-propuesto-${servicio.id}`} className="flex-row items-center gap-2">
+            <Text className="text-sm font-bold text-texto">{formatearMoneda(servicio.monto_final)}</Text>
+            <Text className="text-mini font-bold text-acento">Precio propuesto</Text>
+          </View>
         ) : null}
       </View>
     </Pressable>

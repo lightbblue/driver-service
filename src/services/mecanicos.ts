@@ -262,3 +262,25 @@ export async function listarTalleres(): Promise<TallerOpcion[]> {
   if (error) lanzar(error, 'No se pudieron cargar los talleres');
   return (data ?? []) as TallerOpcion[];
 }
+
+/** Disponibilidad del mecánico autenticado, o null si no es mecánico (RF-PROF-003). */
+export async function obtenerDisponibilidad(): Promise<boolean | null> {
+  const { data: sesion } = await supabase.auth.getSession();
+  const usuarioId = sesion.session?.user.id;
+  if (!usuarioId) return null;
+
+  const { data, error } = await supabase
+    .from('mecanicos')
+    .select('disponible')
+    .eq('usuario_id', usuarioId)
+    .maybeSingle();
+
+  if (error) lanzar(error, 'No se pudo consultar tu disponibilidad');
+  return data ? Boolean((data as { disponible: boolean }).disponible) : null;
+}
+
+/** Activa o desactiva al mecánico. Sin disponibilidad no ve ni acepta solicitudes nuevas (RN-003). */
+export async function cambiarDisponibilidad(disponible: boolean): Promise<void> {
+  const { error } = await supabase.rpc('cambiar_disponibilidad', { p_disponible: disponible });
+  if (error) lanzar(error, 'No se pudo cambiar tu disponibilidad');
+}

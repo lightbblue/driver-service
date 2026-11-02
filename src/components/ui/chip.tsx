@@ -34,7 +34,12 @@ export function Chip({
         onPress && 'active:opacity-70',
         className,
       )}>
-      <Text className={cn('text-mini font-semibold', activo ? 'text-acento' : 'text-texto-tenue')}>
+      {/* En Android, el corte de línea "highQuality" a veces manda la última palabra a una
+          segunda línea que queda tapada ("Ya lo resolví" se veía "Ya lo"). Una línea y corte simple. */}
+      <Text
+        numberOfLines={1}
+        textBreakStrategy="simple"
+        className={cn('text-mini font-semibold', activo ? 'text-acento' : 'text-texto-tenue')}>
         {texto}
       </Text>
     </Pressable>

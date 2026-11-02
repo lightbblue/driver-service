@@ -40,7 +40,7 @@ const { acento: ACENTO, exito: EXITO, peligro: PELIGRO } = COLORES;
 
 const ESTADOS: Record<EstadoServicio, DescriptorEstado> = {
   pendiente: { etiqueta: 'Buscando mecánico', hito: 'Solicitud enviada', icono: 'paper-plane-outline', color: 'text-acento', colorIcono: ACENTO },
-  aceptado: { etiqueta: 'Aceptada', hito: 'El mecánico aceptó', icono: 'person-add-outline', color: 'text-acento', colorIcono: ACENTO },
+  aceptado: { etiqueta: 'Precio enviado', hito: 'El mecánico envió su precio', icono: 'person-add-outline', color: 'text-acento', colorIcono: ACENTO },
   en_camino: { etiqueta: 'Mecánico en camino', hito: 'En camino', icono: 'bicycle-outline', color: 'text-exito', colorIcono: EXITO },
   llegue: { etiqueta: 'Mecánico en el lugar', hito: 'Llegó al lugar', icono: 'flag-outline', color: 'text-exito', colorIcono: EXITO },
   trabajando: { etiqueta: 'Trabajo en curso', hito: 'Inició el trabajo', icono: 'build-outline', color: 'text-acento', colorIcono: ACENTO },
