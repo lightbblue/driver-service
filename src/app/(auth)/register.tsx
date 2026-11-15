@@ -58,12 +58,12 @@ const MODO_REGISTRO: Record<ModalidadMecanico, 'nuevo' | 'existente' | 'ruta'> =
 const TEXTOS: Record<Variante, { titulo: string; bajada: string; boton: string }> = {
   usuario: {
     titulo: 'Creá tu cuenta',
-    bajada: 'Unite a Rider Service y formá parte de nuestra comunidad.',
+    bajada: 'Unite a Driver Service y formá parte de nuestra comunidad.',
     boton: 'Crear cuenta',
   },
   mecanico: {
     titulo: 'Sumate como mecánico',
-    bajada: 'Ofrecé tu servicio, ayudá en el camino y sé parte de la comunidad Rider Service.',
+    bajada: 'Ofrecé tu servicio, ayudá en el camino y sé parte de la comunidad Driver Service.',
     boton: 'Crear cuenta como mecánico',
   },
 };

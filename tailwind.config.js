@@ -1,5 +1,5 @@
 /**
- * Tema centralizado de Rider Service (RNF-UX-001).
+ * Tema centralizado de Driver Service (RNF-UX-001).
  *
  * Ningún componente debe escribir colores, radios ni espaciados a mano:
  * todo sale de estos tokens a través de clases de NativeWind.

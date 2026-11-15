@@ -1,5 +1,5 @@
 /**
- * Entidades del dominio de Rider Service.
+ * Entidades del dominio de Driver Service.
  *
  * Reflejan las tablas del modelo de datos (documento 03) para que la migración
  * de JSON a Supabase no obligue a reescribir componentes (RNF-SCAL-001).

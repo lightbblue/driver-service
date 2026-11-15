@@ -38,7 +38,7 @@ async function direccionNominatim(latitud: number, longitud: number): Promise<Di
 
   const respuesta = await fetch(url, {
     // La política de uso de Nominatim pide identificar la app; el navegador ya envía el Referer.
-    headers: Platform.OS === 'web' ? {} : { 'User-Agent': 'RiderService/1.0 (app educativa)' },
+    headers: Platform.OS === 'web' ? {} : { 'User-Agent': 'DriverService/1.0 (app educativa)' },
   });
   if (!respuesta.ok) return null;
 

@@ -62,7 +62,7 @@ export function ResumenPago({ servicio, esAsignado }: ResumenPagoProps) {
             </Text>
           ) : null}
           <View className="flex-row justify-between">
-            <Text className="text-chico text-texto-tenue">Comisión Rider Service (10 %)</Text>
+            <Text className="text-chico text-texto-tenue">Comisión Driver Service (10 %)</Text>
             <Text className="text-chico text-texto-tenue">− {formatearMoneda(pago.comision)}</Text>
           </View>
           <View className="flex-row justify-between">

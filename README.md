@@ -1,4 +1,4 @@
-# Rider Service — *Nunca viajes solo*
+# Driver Service — *Nunca viajes solo*
 
 Sistema integral de asistencia mecánica para **autos y motos**: conecta en tiempo real al conductor que necesita ayuda con un mecánico o un taller cercano, y centraliza el pedido, la asignación, el seguimiento, el cobro y la calificación del servicio.
 

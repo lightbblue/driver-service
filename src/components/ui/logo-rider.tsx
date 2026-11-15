@@ -31,7 +31,7 @@ export function LogoRider({ tamanio = 'mediano', conLema = true, className }: Lo
       />
       <View>
         <Text className={cn('font-black tracking-wide text-texto', TITULO[tamanio])}>
-          RIDER <Text className="text-acento">SERVICE</Text>
+          DRIVER <Text className="text-acento">SERVICE</Text>
         </Text>
         {conLema ? (
           <Text className="text-micro font-bold tracking-[3px] text-texto-tenue">
