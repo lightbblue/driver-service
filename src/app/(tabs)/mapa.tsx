@@ -14,9 +14,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DetalleMecanicoModal } from '@/components/mapa/detalle-mecanico-modal';
 import { FilaMecanico } from '@/components/mapa/fila-mecanico';
 import { MapaMecanicos, type MapaMecanicosRef } from '@/components/mapa/mapa-mecanicos';
-import { Chip, Conmutador, ListaVacia, Pantalla, type OpcionConmutador } from '@/components/ui';
+import { MapaSolicitudesMecanico } from '@/components/mapa/mapa-solicitudes-mecanico';
+import {
+  Cargando,
+  Chip,
+  Conmutador,
+  EstadoError,
+  ListaVacia,
+  Pantalla,
+  type OpcionConmutador,
+} from '@/components/ui';
+import { useRecurso } from '@/hooks/use-recurso';
 import { COLORES } from '@/lib/tema';
 import { listarMecanicos, tieneUbicacion } from '@/services/mecanicos';
+import { obtenerMecanicoIdActual } from '@/services/sesion';
 import type { Mecanico } from '@/types';
 
 // Coordenadas por defecto (Buenos Aires / Pilar)
@@ -35,12 +46,36 @@ const OPCIONES_VISTA: OpcionConmutador<Vista>[] = [
 ];
 
 /**
+ * El cliente ve talleres y mecánicos cerca suyo; el mecánico ve, en cambio, las
+ * solicitudes abiertas de clientes con averías como puntos en el mapa.
+ */
+export default function MapaScreen() {
+  const rol = useRecurso<{ mecanicoId: string | null } | null>(
+    async () => ({ mecanicoId: await obtenerMecanicoIdActual() }),
+    null,
+  );
+
+  if (rol.datos?.mecanicoId) return <MapaSolicitudesMecanico mecanicoId={rol.datos.mecanicoId} />;
+  if (rol.datos) return <MapaCliente />;
+
+  return (
+    <Pantalla>
+      {rol.error ? (
+        <EstadoError titulo="No pudimos cargar el mapa" mensaje={rol.error} onReintentar={rol.recargar} />
+      ) : (
+        <Cargando mensaje="Cargando mapa..." />
+      )}
+    </Pantalla>
+  );
+}
+
+/**
  * Mecánicos cercanos (RF-VIEW-007) con dos vistas:
  * - Mapa: solo talleres con lugar físico.
  * - Lista: todos los mecánicos, también los de asistencia en ruta (sin ubicación).
  * La vista viaja en el parámetro `vista` para que el Inicio abra la que corresponde.
  */
-export default function MapaScreen() {
+function MapaCliente() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const mapRef = useRef<MapaMecanicosRef | null>(null);
